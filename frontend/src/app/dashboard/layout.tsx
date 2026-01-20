@@ -6,7 +6,7 @@ import {
     LayoutDashboard, Briefcase, FileText, Send, Users, Mail,
     Settings, LogOut, Menu, X, Moon, Sun, Rocket
 } from 'lucide-react';
-import { useUIStore, useAuthStore } from '@/lib/store';
+import { useUIStore, useAuthStore } from '../../lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface DashboardLayoutProps {
@@ -58,8 +58,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                             key={item.href}
                                             href={item.href}
                                             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive
-                                                    ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
-                                                    : 'text-dark-600 dark:text-dark-400 hover:bg-dark-100 dark:hover:bg-dark-800'
+                                                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
+                                                : 'text-dark-600 dark:text-dark-400 hover:bg-dark-100 dark:hover:bg-dark-800'
                                                 }`}
                                         >
                                             <item.icon className="w-5 h-5" />

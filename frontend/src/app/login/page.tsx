@@ -6,8 +6,8 @@ import { useMutation } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Rocket, Mail, Lock, ArrowRight } from 'lucide-react';
-import { authApi } from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
+import { authApi } from '../../lib/api';
+import { useAuthStore } from '../../lib/store';
 
 interface LoginForm {
     email: string;

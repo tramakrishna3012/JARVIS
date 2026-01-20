@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Search, Filter, Plus, MapPin, Building2, Clock, ExternalLink, Star, Trash2 } from 'lucide-react';
-import { jobsApi } from '@/lib/api';
-import type { Job, JobStatus } from '@/types';
+import { jobsApi } from '../../../lib/api';
+import type { Job, JobStatus } from '../../../types';
 
 const statusColors: Record<JobStatus, string> = {
     discovered: 'badge-info',
