@@ -17,9 +17,23 @@ const api: AxiosInstance = axios.create({
     timeout: 15000,
 });
 
+// Helper function to get token from either storage
+const getToken = (key: string): string | null => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(key) || sessionStorage.getItem(key);
+};
+
+// Helper function to clear tokens from both storages
+const clearTokens = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
+};
+
 // Request interceptor to add auth token
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('access_token');
+    const token = getToken('access_token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -33,7 +47,7 @@ api.interceptors.response.use(
         const originalRequest = error.config;
 
         if (error.response?.status === 401 && originalRequest) {
-            const refreshToken = localStorage.getItem('refresh_token');
+            const refreshToken = getToken('refresh_token');
 
             if (refreshToken) {
                 try {
@@ -41,16 +55,26 @@ api.interceptors.response.use(
                         refresh_token: refreshToken,
                     });
 
-                    localStorage.setItem('access_token', data.access_token);
-                    localStorage.setItem('refresh_token', data.refresh_token);
+                    // Store tokens in the same storage they came from
+                    const useLocalStorage = localStorage.getItem('refresh_token') !== null;
+                    if (useLocalStorage) {
+                        localStorage.setItem('access_token', data.access_token);
+                        localStorage.setItem('refresh_token', data.refresh_token);
+                    } else {
+                        sessionStorage.setItem('access_token', data.access_token);
+                        sessionStorage.setItem('refresh_token', data.refresh_token);
+                    }
 
                     originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
                     return api(originalRequest);
                 } catch {
-                    localStorage.removeItem('access_token');
-                    localStorage.removeItem('refresh_token');
+                    clearTokens();
                     window.location.href = '/login';
                 }
+            } else {
+                // No refresh token, clear everything and redirect
+                clearTokens();
+                window.location.href = '/login';
             }
         }
 
