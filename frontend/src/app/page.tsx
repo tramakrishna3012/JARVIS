@@ -100,7 +100,7 @@ export default function HomePage() {
             {/* Footer */}
             <footer className="container mx-auto px-6 py-8 border-t border-dark-800">
                 <div className="flex items-center justify-between">
-                    <div className="text-dark-500">© 2024 JARVIS. All rights reserved.</div>
+                    <div className="text-dark-500">© {new Date().getFullYear()} JARVIS. All rights reserved.</div>
                     <div className="flex gap-6 text-dark-400">
                         <Link href="/privacy" className="hover:text-white">Privacy</Link>
                         <Link href="/terms" className="hover:text-white">Terms</Link>
