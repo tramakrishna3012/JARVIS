@@ -128,6 +128,9 @@ export const resumesApi = {
     update: (id: number | string, data: any) => api.put(`/api/resumes/${id}`, data),
     download: (id: number | string, format: 'pdf' | 'docx' = 'pdf') =>
         api.get(`/api/resumes/${id}/download`, { params: { format }, responseType: 'blob' }),
+    upload: (formData: FormData) => api.post('/api/resumes/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    }),
     analyze: (id: number) => api.post(`/api/resumes/${id}/analyze`),
     delete: (id: number | string) => api.delete(`/api/resumes/${id}`),
 };

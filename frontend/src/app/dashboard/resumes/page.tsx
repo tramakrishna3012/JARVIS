@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Plus, Download, Edit, Trash2, Wand2, Upload, FileUp, LayoutTemplate, X } from 'lucide-react';
@@ -54,9 +54,59 @@ export default function ResumesPage() {
         if (mode === 'scratch' || mode === 'template') {
             setEditingResume(null);
             setIsEditorOpen(true);
+        } else if (mode === 'upload') {
+            // Trigger file input click
+            fileInputRef.current?.click();
         }
-        // Upload mode would open a file picker - to be implemented
     };
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!allowedTypes.includes(file.type)) {
+            setUploadError('Please upload a PDF or DOCX file');
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            setUploadError('File size must be less than 5MB');
+            return;
+        }
+
+        setIsUploading(true);
+        setUploadError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await resumesApi.upload(formData);
+
+            // Open editor with parsed data
+            setEditingResume({ content: response.data.content });
+            setIsEditorOpen(true);
+
+            queryClient.invalidateQueries({ queryKey: ['resumes'] });
+        } catch (error: any) {
+            console.error('Upload failed:', error);
+            setUploadError(error.response?.data?.detail || 'Failed to parse resume. Please try again.');
+        } finally {
+            setIsUploading(false);
+            // Reset file input
+            if (event.target) {
+                event.target.value = '';
+            }
+        }
+    };
+
 
     const handleEdit = (resume: any) => {
         setEditingResume(resume);
@@ -105,6 +155,15 @@ export default function ResumesPage() {
 
     return (
         <div className="space-y-6">
+            {/* Hidden file input for upload */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+            />
+
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-dark-900 dark:text-white">Resumes</h1>
@@ -116,12 +175,33 @@ export default function ResumesPage() {
                     <button
                         onClick={() => setShowCreateModal(true)}
                         className="btn-primary"
+                        disabled={isUploading}
                     >
                         <Plus className="w-4 h-4 mr-2" />
                         Create Resume
                     </button>
                 </div>
             </div>
+
+            {/* Upload status */}
+            {isUploading && (
+                <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-blue-700 dark:text-blue-300">Parsing your resume...</span>
+                </div>
+            )}
+
+            {uploadError && (
+                <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                    <span className="text-red-700 dark:text-red-300">{uploadError}</span>
+                    <button
+                        onClick={() => setUploadError(null)}
+                        className="text-red-500 hover:text-red-700"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
 
             {isLoading ? (
                 <div className="flex justify-center py-12">

@@ -3,7 +3,7 @@ Resumes API Routes
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, File, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -109,6 +109,157 @@ async def generate_resume(
     # background_tasks.add_task(resume_builder.generate, resume.id, current_user.id, request)
     
     return ResumeResponse.model_validate(resume)
+
+
+@router.post("/upload")
+async def upload_resume(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Upload and parse an existing resume (PDF or DOCX)"""
+    # Validate file type
+    allowed_types = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]
+    
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF and DOCX files are supported"
+        )
+    
+    # Read file content
+    content = await file.read()
+    
+    # Parse based on file type
+    try:
+        if file.content_type == 'application/pdf':
+            parsed_content = await parse_pdf(content)
+        else:
+            parsed_content = await parse_docx(content)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to parse resume: {str(e)}"
+        )
+    
+    # Create resume with parsed content
+    resume = Resume(
+        user_id=current_user.id,
+        name=file.filename or "Uploaded Resume",
+        content=parsed_content,
+        is_master=False,
+    )
+    db.add(resume)
+    await db.commit()
+    await db.refresh(resume)
+    
+    return {
+        "id": resume.id,
+        "name": resume.name,
+        "content": parsed_content,
+        "message": "Resume parsed successfully"
+    }
+
+
+async def parse_pdf(content: bytes) -> dict:
+    """Parse PDF content and extract text"""
+    try:
+        import fitz  # PyMuPDF
+        
+        doc = fitz.open(stream=content, filetype="pdf")
+        text = ""
+        for page in doc:
+            text += page.get_text()
+        doc.close()
+        
+        return extract_resume_data(text)
+    except ImportError:
+        # Fallback if PyMuPDF not installed
+        return {
+            "personalInfo": {"fullName": ""},
+            "summary": "",
+            "experiences": [],
+            "education": [],
+            "skills": [],
+            "raw_text": "PDF parsing requires PyMuPDF. Please install it with: pip install pymupdf"
+        }
+
+
+async def parse_docx(content: bytes) -> dict:
+    """Parse DOCX content and extract text"""
+    try:
+        from docx import Document
+        import io as iomodule
+        
+        doc = Document(iomodule.BytesIO(content))
+        text = "\n".join([para.text for para in doc.paragraphs])
+        
+        return extract_resume_data(text)
+    except ImportError:
+        return {
+            "personalInfo": {"fullName": ""},
+            "summary": "",
+            "experiences": [],
+            "education": [],
+            "skills": [],
+            "raw_text": "DOCX parsing requires python-docx. Please install it."
+        }
+
+
+def extract_resume_data(text: str) -> dict:
+    """Extract structured resume data from raw text"""
+    import re
+    
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+    
+    # Basic extraction - name is usually the first non-empty line
+    name = lines[0] if lines else ""
+    
+    # Try to find email
+    email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', text)
+    email = email_match.group(0) if email_match else ""
+    
+    # Try to find phone
+    phone_match = re.search(r'[\+]?[\d\s\-\(\)]{10,}', text)
+    phone = phone_match.group(0).strip() if phone_match else ""
+    
+    # Extract sections based on common headers
+    sections = {
+        'summary': '',
+        'experience': [],
+        'education': [],
+        'skills': []
+    }
+    
+    # Look for skills (common patterns)
+    skills_patterns = ['skills', 'technical skills', 'competencies', 'technologies']
+    for i, line in enumerate(lines):
+        lower_line = line.lower()
+        if any(pattern in lower_line for pattern in skills_patterns):
+            # Get the next few lines as skills
+            skill_lines = lines[i+1:i+5]
+            for skill_line in skill_lines:
+                # Split by common delimiters
+                skills = re.split(r'[,;•|\t]', skill_line)
+                sections['skills'].extend([s.strip() for s in skills if s.strip() and len(s.strip()) < 50])
+    
+    return {
+        "personalInfo": {
+            "fullName": name,
+            "email": email,
+            "phone": phone,
+            "location": "",
+            "summary": ""
+        },
+        "summary": "",
+        "experiences": [],
+        "education": [],
+        "skills": sections['skills'][:20],  # Limit to 20 skills
+        "raw_text": text[:5000]  # Keep first 5000 chars for reference
+    }
 
 
 @router.put("/{resume_id}", response_model=ResumeResponse)
