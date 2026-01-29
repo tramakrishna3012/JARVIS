@@ -28,8 +28,13 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "https://jarvis.vercel.app"]
+    # CORS - Include all Vercel deployment patterns
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "https://jarvis.vercel.app",
+        "https://jarvis-nine-rose.vercel.app",
+        "https://*.vercel.app",
+    ]
     
     # OpenAI
     OPENAI_API_KEY: str = ""
