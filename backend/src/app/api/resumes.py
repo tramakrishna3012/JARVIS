@@ -148,10 +148,13 @@ async def update_resume(
 @router.get("/{resume_id}/download")
 async def download_resume(
     resume_id: int,
+    format: str = "pdf",
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Download resume as PDF"""
+    """Download resume as PDF or DOCX"""
+    from app.services.resume_builder import resume_builder
+    
     result = await db.execute(
         select(Resume)
         .where(Resume.id == resume_id, Resume.user_id == current_user.id)
@@ -161,13 +164,30 @@ async def download_resume(
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
     
-    if not resume.pdf_content:
-        raise HTTPException(status_code=404, detail="PDF not generated yet")
+    # Get resume content
+    content = resume.content or {}
+    theme_color = getattr(resume, 'theme_color', '#3B82F6') or '#3B82F6'
+    
+    if format.lower() == "docx":
+        try:
+            file_bytes = resume_builder.generate_docx(content, theme_color)
+            media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            filename = f"{resume.name}.docx"
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"DOCX generation failed: {str(e)}")
+    else:
+        # Default to PDF
+        try:
+            file_bytes = resume_builder.generate_pdf(content, theme_color)
+            media_type = "application/pdf"
+            filename = f"{resume.name}.pdf"
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
     
     return StreamingResponse(
-        io.BytesIO(resume.pdf_content),
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={resume.name}.pdf"}
+        io.BytesIO(file_bytes),
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
 

@@ -2,7 +2,9 @@
 Application Configuration
 """
 
-from typing import List
+from typing import List, Any
+import json
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -53,6 +55,30 @@ class Settings(BaseSettings):
     # Job Matching
     MIN_SKILL_MATCH_THRESHOLD: float = 0.6
     
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors(cls, v: Any) -> List[str]:
+        try:
+            if isinstance(v, str):
+                v = v.strip()
+                # Try JSON parsing
+                if v.startswith("[") and v.endswith("]"):
+                    try:
+                         # Handle common user error: single quotes
+                        v_fixed = v.replace("'", '"') 
+                        return json.loads(v_fixed)
+                    except json.JSONDecodeError:
+                        pass
+                # Fallback to comma separation
+                return [i.strip() for i in v.split(",") if i.strip()]
+            elif isinstance(v, list):
+                return v
+        except Exception as e:
+            print(f"CORS CONFIG ERROR: {e}. Fallback to wildcard.")
+        
+        # Absolute fallback to prevent crash
+        return ["*"]
+
     class Config:
         env_file = ".env"
         case_sensitive = True

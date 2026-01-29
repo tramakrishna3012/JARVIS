@@ -4,14 +4,16 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Rocket, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ChevronLeft } from 'lucide-react';
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../lib/store';
 
 interface LoginForm {
     email: string;
     password: string;
+    rememberMe?: boolean;
 }
 
 export default function LoginPage() {
@@ -23,9 +25,9 @@ export default function LoginPage() {
 
     const mutation = useMutation({
         mutationFn: (data: LoginForm) => authApi.login(data.email, data.password),
-        onSuccess: (response) => {
+        onSuccess: (response, variables) => {
             const { user, tokens } = response.data;
-            login(user, tokens.access_token, tokens.refresh_token);
+            login(user, tokens.access_token, tokens.refresh_token, variables.rememberMe);
             router.push('/dashboard');
         },
         onError: (err: any) => {
@@ -39,15 +41,19 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-950 to-primary-950 flex items-center justify-center px-4">
+        <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-950 to-primary-950 flex items-center justify-center px-4 relative">
+            {/* Back to Home */}
+            <Link href="/" className="absolute top-8 left-8 flex items-center gap-2 text-dark-300 hover:text-white transition-colors">
+                <ChevronLeft className="w-5 h-5" />
+                <span>Back to Home</span>
+            </Link>
+
             <div className="w-full max-w-md">
                 {/* Logo */}
-                <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                        <Rocket className="w-7 h-7 text-white" />
-                    </div>
-                    <span className="text-3xl font-bold text-white">JARVIS</span>
-                </div>
+                <Link href="/" className="flex items-center justify-center gap-3 mb-8 hover:opacity-80 transition-opacity">
+                    <Image src="/jarvis.svg" alt="JARVIS" width={72} height={72} className="object-contain" />
+                    <span className="text-xl font-bold text-white">JARVIS</span>
+                </Link>
 
                 {/* Card */}
                 <div className="card bg-dark-800/50 backdrop-blur border-dark-700">
@@ -92,6 +98,21 @@ export default function LoginPage() {
                             {errors.password && (
                                 <p className="text-red-400 text-sm mt-1">{errors.password.message}</p>
                             )}
+                        </div>
+
+                        {/* Remember Me */}
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    {...register('rememberMe')}
+                                    className="w-4 h-4 rounded border-dark-600 bg-dark-700 text-primary-500 focus:ring-primary-500 focus:ring-offset-dark-800"
+                                />
+                                <span className="text-sm text-dark-400">Remember me</span>
+                            </label>
+                            <Link href="/forgot-password" className="text-sm text-primary-400 hover:text-primary-300">
+                                Forgot password?
+                            </Link>
                         </div>
 
                         <button

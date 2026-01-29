@@ -6,6 +6,10 @@ export const metadata: Metadata = {
     title: 'JARVIS - AI Job Application Platform',
     description: 'AI-powered automated job application and referral platform',
     keywords: ['job search', 'resume builder', 'job application', 'AI', 'automation'],
+    icons: {
+        icon: '/jarvis.svg',
+        apple: '/jarvis.svg',
+    },
 };
 
 export default function RootLayout({

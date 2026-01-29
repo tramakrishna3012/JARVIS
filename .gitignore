@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/
 lib64/
 parts/
 sdist/
@@ -145,3 +145,4 @@ coverage/
 *.db
 *.sqlite
 *.sqlite3
+.env*.local

@@ -1,28 +1,53 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Rocket, Briefcase, FileText, Mail, Users, Zap, ChevronRight } from 'lucide-react';
+import { Rocket, Briefcase, FileText, Mail, Users, Zap, ChevronRight, LayoutDashboard, LogOut } from 'lucide-react';
+import { useAuthStore } from '@/lib/store';
 
 export default function HomePage() {
+    const { user, logout } = useAuthStore();
+    const router = useRouter();
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-dark-900 via-dark-950 to-primary-950">
             {/* Hero Section */}
             <header className="container mx-auto px-6 py-8">
                 <nav className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                            <Rocket className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="text-2xl font-bold text-white">JARVIS</span>
+                    <div className="flex items-center gap-3">
+                        <Image src="/jarvis.svg" alt="JARVIS" width={64} height={64} className="object-contain" />
+                        <span className="text-xl font-bold text-white">JARVIS</span>
                     </div>
                     <div className="flex items-center gap-4">
-                        <Link href="/login" className="text-dark-300 hover:text-white transition-colors">
-                            Login
-                        </Link>
-                        <Link href="/register" className="btn-primary">
-                            Get Started
-                        </Link>
+                        {user ? (
+                            <>
+                                <Link href="/dashboard" className="btn-primary flex items-center gap-2">
+                                    <LayoutDashboard className="w-4 h-4" />
+                                    Dashboard
+                                </Link>
+                                <button
+                                    onClick={() => {
+                                        logout();
+                                        router.refresh();
+                                    }}
+                                    className="text-dark-300 hover:text-white transition-colors flex items-center gap-2"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                    Logout
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link href="/login" className="text-dark-300 hover:text-white transition-colors">
+                                    Login
+                                </Link>
+                                <Link href="/register" className="btn-primary">
+                                    Get Started
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </nav>
             </header>

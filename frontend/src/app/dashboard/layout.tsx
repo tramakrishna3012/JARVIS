@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, Briefcase, FileText, Send, Users, Mail,
-    Settings, LogOut, Menu, X, Moon, Sun, Rocket
+    Settings, LogOut, Menu, X, Moon, Sun, ChevronLeft
 } from 'lucide-react';
 import { useUIStore, useAuthStore } from '../../lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,12 +43,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     >
                         <div className="flex flex-col h-full">
                             {/* Logo */}
-                            <div className="flex items-center gap-3 px-6 py-5 border-b border-dark-200 dark:border-dark-800">
-                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                                    <Rocket className="w-6 h-6 text-white" />
-                                </div>
-                                <span className="text-xl font-bold text-dark-900 dark:text-white">JARVIS</span>
-                            </div>
+                            <Link href="/" className="flex items-center gap-3 px-6 py-4 border-b border-dark-200 dark:border-dark-800 hover:bg-dark-50 dark:hover:bg-dark-800/50 transition-colors">
+                                <Image src="/jarvis.svg" alt="JARVIS" width={56} height={56} className="object-contain" />
+                                <span className="text-lg font-bold text-dark-900 dark:text-white">JARVIS</span>
+                            </Link>
 
                             {/* Navigation */}
                             <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
@@ -81,9 +80,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                         <p className="text-sm font-medium truncate">{user?.email}</p>
                                     </div>
                                 </div>
+
+                                <Link
+                                    href="/"
+                                    className="w-full flex items-center gap-3 px-4 py-3 mt-2 text-dark-600 dark:text-dark-400 hover:bg-dark-100 dark:hover:bg-dark-800 rounded-lg transition-colors"
+                                >
+                                    <ChevronLeft className="w-5 h-5" />
+                                    <span>Back to Home</span>
+                                </Link>
+
                                 <button
                                     onClick={logout}
-                                    className="w-full flex items-center gap-3 px-4 py-3 mt-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                    className="w-full flex items-center gap-3 px-4 py-3 mt-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                 >
                                     <LogOut className="w-5 h-5" />
                                     <span>Logout</span>

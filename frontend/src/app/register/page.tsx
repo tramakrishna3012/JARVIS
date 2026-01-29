@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Rocket, Mail, Lock, ArrowRight, Check } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Check } from 'lucide-react';
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../lib/store';
 
@@ -27,7 +28,7 @@ export default function RegisterPage() {
         mutationFn: (data: RegisterForm) => authApi.register(data.email, data.password),
         onSuccess: (response) => {
             const { user, tokens } = response.data;
-            login(user, tokens.access_token, tokens.refresh_token);
+            login(user, tokens.access_token, tokens.refresh_token, true);
             router.push('/dashboard/settings'); // Go to settings to complete profile
         },
         onError: (err: any) => {
@@ -45,10 +46,8 @@ export default function RegisterPage() {
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                        <Rocket className="w-7 h-7 text-white" />
-                    </div>
-                    <span className="text-3xl font-bold text-white">JARVIS</span>
+                    <Image src="/jarvis.svg" alt="JARVIS" width={72} height={72} className="object-contain" />
+                    <span className="text-xl font-bold text-white">JARVIS</span>
                 </div>
 
                 {/* Card */}

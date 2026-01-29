@@ -1,17 +1,20 @@
 /**
  * API Client for JARVIS Backend
+ * Optimized with timeout, interceptors, and error handling
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// Create axios instance
+// Create axios instance with optimized settings
 const api: AxiosInstance = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json',
     },
+    // Timeout after 15 seconds to prevent hanging
+    timeout: 15000,
 });
 
 // Request interceptor to add auth token
@@ -93,16 +96,16 @@ export const jobsApi = {
     discover: (data: any) => api.post('/api/jobs/discover', data),
 };
 
-// Resumes API
 export const resumesApi = {
     list: () => api.get('/api/resumes'),
     get: (id: number) => api.get(`/api/resumes/${id}`),
     create: (data: any) => api.post('/api/resumes', data),
     generate: (data: any) => api.post('/api/resumes/generate', data),
-    update: (id: number, data: any) => api.put(`/api/resumes/${id}`, data),
-    download: (id: number) => api.get(`/api/resumes/${id}/download`, { responseType: 'blob' }),
+    update: (id: number | string, data: any) => api.put(`/api/resumes/${id}`, data),
+    download: (id: number | string, format: 'pdf' | 'docx' = 'pdf') =>
+        api.get(`/api/resumes/${id}/download`, { params: { format }, responseType: 'blob' }),
     analyze: (id: number) => api.post(`/api/resumes/${id}/analyze`),
-    delete: (id: number) => api.delete(`/api/resumes/${id}`),
+    delete: (id: number | string) => api.delete(`/api/resumes/${id}`),
 };
 
 // Applications API

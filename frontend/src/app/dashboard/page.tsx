@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Briefcase, FileText, Send, Users, Mail, TrendingUp, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { applicationsApi, jobsApi, resumesApi, emailsApi } from '../../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { memo, useMemo } from 'react';
 
 export default function DashboardPage() {
     const { data: stats } = useQuery({

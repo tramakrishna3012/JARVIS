@@ -24,7 +24,7 @@ class AuditLog(Base):
     
     # Context
     description = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)
     # {"job_title": "...", "company": "...", "score": 0.85}
     
     # Request Info
