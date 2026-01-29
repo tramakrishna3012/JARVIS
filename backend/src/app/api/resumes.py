@@ -120,15 +120,24 @@ async def ai_build_resume(
     """Build a complete resume using AI from user input"""
     from app.agents.ai_engine import ai_engine
     
-    user_input = request.get("userInput", {})
-    
-    # Call AI to build resume
-    resume_data = await ai_engine.build_complete_resume(user_input)
-    
-    if not resume_data:
-        raise HTTPException(status_code=500, detail="AI failed to generate resume")
-    
-    return {"success": True, "resume": resume_data}
+    try:
+        user_input = request.get("userInput", {})
+        
+        if not user_input:
+            raise HTTPException(status_code=400, detail="No user input provided")
+        
+        # Call AI to build resume
+        resume_data = await ai_engine.build_complete_resume(user_input)
+        
+        if not resume_data or not resume_data.get("personalInfo"):
+            raise HTTPException(status_code=500, detail="AI failed to generate resume. Please try again.")
+        
+        return {"success": True, "resume": resume_data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"AI build resume error: {e}")
+        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
 
 
 @router.post("/ai/summary")

@@ -490,7 +490,7 @@ RULES:
 5. Suggest relevant skills based on the role
 6. Make it ATS-friendly and professional
 
-Return ONLY valid JSON."""
+Return ONLY valid JSON, no markdown code blocks."""
 
         try:
             response = await self.client.chat.completions.create(
@@ -499,7 +499,37 @@ Return ONLY valid JSON."""
                 temperature=0.5,
                 max_tokens=2500
             )
-            return json.loads(response.choices[0].message.content)
+            
+            content = response.choices[0].message.content.strip()
+            
+            # Remove markdown code blocks if present
+            if content.startswith("```json"):
+                content = content[7:]
+            elif content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+            
+            result = json.loads(content)
+            
+            # Ensure required structure
+            if "personalInfo" not in result:
+                result["personalInfo"] = {}
+            if "experiences" not in result:
+                result["experiences"] = []
+            if "education" not in result:
+                result["education"] = []
+            if "skills" not in result:
+                result["skills"] = []
+            if "certifications" not in result:
+                result["certifications"] = []
+            
+            return result
+        except json.JSONDecodeError as je:
+            print(f"JSON parse error: {je}")
+            print(f"Raw content: {content[:500] if content else 'empty'}")
+            return {}
         except Exception as e:
             print(f"Resume build error: {e}")
             return {}
