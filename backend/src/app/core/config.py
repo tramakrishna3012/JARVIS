@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     
     # OpenAI
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4-turbo-preview"
+    OPENAI_MODEL: str = "gpt-4o-mini"
     
     # Email (SMTP)
     SMTP_HOST: str = "smtp.gmail.com"
