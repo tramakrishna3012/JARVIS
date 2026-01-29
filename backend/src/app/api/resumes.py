@@ -213,6 +213,8 @@ def extract_resume_data(text: str) -> dict:
     """Extract structured resume data from raw text using improved parsing"""
     import re
     
+    # Normalize text - handle various line endings and extra whitespace
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
     lines = [l.strip() for l in text.split('\n') if l.strip()]
     full_text = text
     
@@ -222,9 +224,12 @@ def extract_resume_data(text: str) -> dict:
     
     # Name is usually the first non-email, non-phone, substantial line
     name = ""
-    for line in lines[:5]:
-        # Skip if it looks like an email or phone or is too short
-        if '@' in line or re.search(r'\d{3}.*\d{4}', line):
+    for line in lines[:8]:
+        # Skip if it looks like an email, phone, or URL
+        if '@' in line or re.search(r'\d{5,}', line) or 'linkedin' in line.lower() or 'github' in line.lower():
+            continue
+        # Skip common headers
+        if line.lower() in ['resume', 'curriculum vitae', 'cv', 'personal details', 'contact']:
             continue
         if len(line) > 2 and len(line) < 60:
             name = line
@@ -234,30 +239,56 @@ def extract_resume_data(text: str) -> dict:
     email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', full_text)
     email = email_match.group(0) if email_match else ""
     
-    # Extract phone (various formats)
+    # Extract phone - IMPROVED for Indian formats
     phone_patterns = [
-        r'\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
-        r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
-        r'\+\d{10,12}'
+        r'\+91[\s\-]?\d{5}[\s\-]?\d{5}',  # +91 98765 43210
+        r'\+91[\s\-]?\d{10}',              # +91 9876543210
+        r'91[\s\-]?\d{10}',                # 91 9876543210
+        r'\d{5}[\s\-]?\d{5}',              # 98765 43210 (Indian mobile)
+        r'\d{10}',                          # 9876543210
+        r'\+\d{1,3}[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}',  # International
+        r'\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}',  # US format
     ]
     phone = ""
     for pattern in phone_patterns:
         match = re.search(pattern, full_text)
         if match:
             phone = match.group(0).strip()
+            # Validate it's not too long (could be other numbers)
+            if len(re.sub(r'\D', '', phone)) <= 13:
+                break
+    
+    # Extract location - IMPROVED for Indian cities
+    location = ""
+    indian_cities = ['Hyderabad', 'Mumbai', 'Bangalore', 'Bengaluru', 'Delhi', 'Chennai', 'Kolkata', 
+                     'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 
+                     'Thane', 'Bhopal', 'Visakhapatnam', 'Patna', 'Vadodara', 'Ghaziabad',
+                     'Noida', 'Gurgaon', 'Gurugram', 'Bhilai', 'Raipur']
+    indian_states = ['Telangana', 'Maharashtra', 'Karnataka', 'Tamil Nadu', 'Andhra Pradesh',
+                     'Gujarat', 'Rajasthan', 'Uttar Pradesh', 'Madhya Pradesh', 'Chhattisgarh',
+                     'West Bengal', 'Kerala', 'Punjab', 'Haryana', 'Bihar', 'Odisha']
+    
+    for city in indian_cities:
+        if city.lower() in full_text.lower():
+            location = city
+            # Try to find state
+            for state in indian_states:
+                if state.lower() in full_text.lower():
+                    location = f"{city}, {state}"
+                    break
             break
     
-    # Extract location (city, state patterns)
-    location = ""
-    location_patterns = [
-        r'([A-Z][a-z]+(?:\s[A-Z][a-z]+)?),\s*([A-Z]{2})\b',  # City, ST
-        r'([A-Z][a-z]+(?:\s[A-Z][a-z]+)?),\s*([A-Z][a-z]+)',  # City, State
-    ]
-    for pattern in location_patterns:
-        match = re.search(pattern, full_text[:500])
-        if match:
-            location = match.group(0)
-            break
+    # Fallback to regex patterns
+    if not location:
+        location_patterns = [
+            r'([A-Z][a-z]+(?:\s[A-Z][a-z]+)?),\s*([A-Z][a-z]+)',
+            r'([A-Z][a-z]+),\s*([A-Z]{2})\b',
+        ]
+        for pattern in location_patterns:
+            match = re.search(pattern, full_text[:800])
+            if match:
+                location = match.group(0)
+                break
     
     # Extract LinkedIn
     linkedin = ""
@@ -265,17 +296,31 @@ def extract_resume_data(text: str) -> dict:
     if linkedin_match:
         linkedin = f"https://{linkedin_match.group(0)}"
     
+    # GitHub
+    github = ""
+    github_match = re.search(r'github\.com/[\w-]+', full_text, re.IGNORECASE)
+    if github_match:
+        github = f"https://{github_match.group(0)}"
+    
     # =====================
-    # IDENTIFY SECTIONS
+    # IDENTIFY SECTIONS - IMPROVED headers
     # =====================
     
     section_headers = {
-        'summary': ['summary', 'professional summary', 'profile', 'objective', 'about me', 'about'],
-        'experience': ['experience', 'work experience', 'professional experience', 'employment', 'work history', 'career history'],
-        'education': ['education', 'academic', 'qualifications', 'academic background'],
-        'skills': ['skills', 'technical skills', 'core competencies', 'competencies', 'technologies', 'tech stack', 'expertise', 'proficiencies'],
-        'projects': ['projects', 'key projects', 'personal projects'],
-        'certifications': ['certifications', 'certificates', 'licenses']
+        'summary': ['summary', 'professional summary', 'career summary', 'profile', 'objective', 
+                    'career objective', 'about me', 'about', 'introduction', 'overview'],
+        'experience': ['experience', 'work experience', 'professional experience', 'employment', 
+                       'work history', 'career history', 'employment history', 'internship', 
+                       'internships', 'work', 'professional background'],
+        'education': ['education', 'academic', 'qualifications', 'academic background', 
+                      'educational qualification', 'educational qualifications', 'academics'],
+        'skills': ['skills', 'technical skills', 'core competencies', 'competencies', 
+                   'technologies', 'tech stack', 'expertise', 'proficiencies', 'key skills',
+                   'technical expertise', 'programming languages', 'languages and tools'],
+        'projects': ['projects', 'key projects', 'personal projects', 'academic projects', 
+                     'major projects', 'project work'],
+        'certifications': ['certifications', 'certificates', 'licenses', 'courses', 
+                           'training', 'achievements', 'awards']
     }
     
     def find_section_indices(lines, headers):
@@ -283,14 +328,17 @@ def extract_resume_data(text: str) -> dict:
         sections = {}
         for i, line in enumerate(lines):
             lower_line = line.lower().strip()
-            # Remove common punctuation
-            lower_line = re.sub(r'[:\-_|]', '', lower_line).strip()
+            # Remove common punctuation and formatting
+            lower_line = re.sub(r'^[#\*\-_•●○▪\s]+', '', lower_line)
+            lower_line = re.sub(r'[:\-_|#\*]+$', '', lower_line).strip()
             
             for section_name, patterns in headers.items():
                 for pattern in patterns:
-                    if lower_line == pattern or lower_line.startswith(pattern + ' '):
+                    # Match if line is exactly the pattern or starts with it
+                    if lower_line == pattern or lower_line == pattern + 's':
                         if section_name not in sections:
                             sections[section_name] = {'start': i, 'end': len(lines)}
+                        break
         
         # Calculate end indices
         sorted_sections = sorted(sections.items(), key=lambda x: x[1]['start'])
@@ -309,11 +357,11 @@ def extract_resume_data(text: str) -> dict:
     summary = ""
     if 'summary' in section_indices:
         start, end = section_indices['summary']
-        summary_lines = lines[start+1:min(start+6, end)]
+        summary_lines = lines[start+1:min(start+8, end)]
         summary = ' '.join(summary_lines)
     
     # =====================
-    # EXTRACT EXPERIENCE
+    # EXTRACT EXPERIENCE - IMPROVED
     # =====================
     
     experiences = []
@@ -322,35 +370,61 @@ def extract_resume_data(text: str) -> dict:
         exp_lines = lines[start+1:end]
         
         current_exp = None
-        date_pattern = r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}|(?:19|20)\d{2})\s*[-–—to]+\s*((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}|(?:19|20)\d{2}|Present|Current)'
         
-        for line in exp_lines:
-            # Check if this line contains dates (likely a job entry)
-            date_match = re.search(date_pattern, line, re.IGNORECASE)
+        # Date patterns - multiple formats
+        date_patterns = [
+            r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\'?\d{2,4})\s*[-–—to]+\s*((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\'?\d{2,4}|Present|Current|Till Date|Ongoing)',
+            r'((?:19|20)\d{2})\s*[-–—to]+\s*((?:19|20)\d{2}|Present|Current|Till Date|Ongoing)',
+            r'(\d{1,2}/\d{2,4})\s*[-–—to]+\s*(\d{1,2}/\d{2,4}|Present|Current)',
+        ]
+        
+        for idx, line in enumerate(exp_lines):
+            # Check if this line contains dates
+            date_match = None
+            for pattern in date_patterns:
+                date_match = re.search(pattern, line, re.IGNORECASE)
+                if date_match:
+                    break
             
-            # Check if this looks like a company/title line
-            is_new_entry = date_match or (
-                len(line) > 3 and 
-                not line.startswith(('•', '-', '●', '*', '○')) and
-                any(c.isupper() for c in line[:3])
+            # Check if this looks like a job title or company line
+            looks_like_title = (
+                len(line) > 5 and 
+                not line.startswith(('•', '-', '●', '*', '○', '▪', '→', '►')) and
+                (any(c.isupper() for c in line[:5]) or date_match)
             )
             
-            if is_new_entry and date_match:
+            # Job title keywords
+            title_keywords = ['developer', 'engineer', 'manager', 'analyst', 'designer', 
+                             'intern', 'associate', 'consultant', 'lead', 'senior', 
+                             'junior', 'trainee', 'executive', 'specialist', 'coordinator']
+            has_title_keyword = any(kw in line.lower() for kw in title_keywords)
+            
+            if looks_like_title and (date_match or has_title_keyword):
                 # Save previous experience
-                if current_exp:
+                if current_exp and (current_exp['position'] or current_exp['company']):
                     experiences.append(current_exp)
                 
                 # Parse dates
                 start_date = date_match.group(1) if date_match else ""
                 end_date = date_match.group(2) if date_match else ""
-                is_current = 'present' in end_date.lower() or 'current' in end_date.lower() if end_date else False
+                is_current = any(kw in end_date.lower() for kw in ['present', 'current', 'till date', 'ongoing']) if end_date else False
                 
-                # Extract title and company from the line
-                line_before_date = line[:date_match.start()].strip() if date_match else line
-                parts = re.split(r'\s*[-–—|@at]\s*', line_before_date, maxsplit=1)
+                # Extract title and company
+                line_clean = line
+                if date_match:
+                    line_clean = line[:date_match.start()].strip()
+                
+                # Try to split by common separators
+                parts = re.split(r'\s*[-–—|@]\s*|\s+at\s+|\s+in\s+', line_clean, maxsplit=1)
                 
                 position = parts[0].strip() if parts else ""
                 company = parts[1].strip() if len(parts) > 1 else ""
+                
+                # If no company, check next line
+                if not company and idx + 1 < len(exp_lines):
+                    next_line = exp_lines[idx + 1]
+                    if not next_line.startswith(('•', '-', '●', '*', '○')) and len(next_line) < 80:
+                        company = next_line
                 
                 current_exp = {
                     'position': position,
@@ -361,20 +435,40 @@ def extract_resume_data(text: str) -> dict:
                     'description': '',
                     'highlights': []
                 }
-            elif current_exp and line.startswith(('•', '-', '●', '*', '○', '▪')):
-                # This is a bullet point - add to highlights
-                highlight = re.sub(r'^[•\-●*○▪]\s*', '', line).strip()
-                if highlight:
+            elif current_exp and line.startswith(('•', '-', '●', '*', '○', '▪', '→', '►')):
+                # This is a bullet point
+                highlight = re.sub(r'^[•\-●*○▪→►]\s*', '', line).strip()
+                if highlight and len(highlight) > 5:
                     current_exp['highlights'].append(highlight)
-            elif current_exp and line and not any(h in line.lower() for headers_list in section_headers.values() for h in headers_list):
-                # Add to description if not a section header
-                if len(current_exp['highlights']) == 0:
+            elif current_exp and line and len(current_exp['highlights']) == 0:
+                # Could be description or company name
+                if not current_exp['company'] and len(line) < 80:
+                    current_exp['company'] = line
+                else:
                     current_exp['description'] += ' ' + line
         
         # Add last experience
-        if current_exp:
+        if current_exp and (current_exp['position'] or current_exp['company']):
             current_exp['description'] = current_exp['description'].strip()
             experiences.append(current_exp)
+    
+    # =====================
+    # FALLBACK: Try to find experience even without section header
+    # =====================
+    if not experiences:
+        # Look for job titles anywhere in the document
+        job_title_pattern = r'((?:Senior|Junior|Lead|Sr\.?|Jr\.?)?\s*(?:Software|Web|Full[\s-]?Stack|Frontend|Backend|Data|ML|AI|DevOps|Cloud|Mobile|QA|Test)?\s*(?:Developer|Engineer|Analyst|Designer|Architect|Intern|Trainee))[\s\-–—@|]+([A-Za-z\s&]+?)(?:\s*[-–—|]\s*|\s*\(?\s*)((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\'?\d{2,4}|(?:19|20)\d{2})'
+        
+        for match in re.finditer(job_title_pattern, full_text, re.IGNORECASE):
+            experiences.append({
+                'position': match.group(1).strip(),
+                'company': match.group(2).strip(),
+                'startDate': match.group(3),
+                'endDate': '',
+                'current': False,
+                'description': '',
+                'highlights': []
+            })
     
     # =====================
     # EXTRACT EDUCATION
@@ -386,7 +480,7 @@ def extract_resume_data(text: str) -> dict:
         edu_lines = lines[start+1:end]
         
         degree_patterns = [
-            r"(Bachelor'?s?|Master'?s?|Ph\.?D\.?|B\.?S\.?|M\.?S\.?|B\.?A\.?|M\.?A\.?|B\.?E\.?|M\.?E\.?|B\.?Tech|M\.?Tech|MBA|Associate'?s?)",
+            r"(Bachelor'?s?|Master'?s?|Ph\.?D\.?|B\.?S\.?|M\.?S\.?|B\.?A\.?|M\.?A\.?|B\.?E\.?|M\.?E\.?|B\.?Tech\.?|M\.?Tech\.?|MBA|MCA|BCA|B\.?Com\.?|M\.?Com\.?|B\.?Sc\.?|M\.?Sc\.?|Diploma|Associate'?s?|XII|12th|X|10th|HSC|SSC|CBSE|ICSE|Intermediate)",
         ]
         
         current_edu = None
@@ -396,9 +490,9 @@ def extract_resume_data(text: str) -> dict:
             has_degree = any(re.search(p, line, re.IGNORECASE) for p in degree_patterns)
             
             # Check for year pattern
-            year_match = re.search(r'(19|20)\d{2}', line)
+            year_matches = re.findall(r'(19|20)\d{2}', line)
             
-            if has_degree or (year_match and not current_edu):
+            if has_degree or (year_matches and not current_edu):
                 if current_edu:
                     education.append(current_edu)
                 
@@ -407,28 +501,31 @@ def extract_resume_data(text: str) -> dict:
                 degree = degree_match.group(0) if degree_match else ""
                 
                 # Extract years
-                years = re.findall(r'(19|20)\d{2}', line)
-                start_year = years[0] if years else ""
-                end_year = years[1] if len(years) > 1 else years[0] if years else ""
+                start_year = year_matches[0] + year_matches[0][-2:] if year_matches else ""
+                end_year = year_matches[1] + year_matches[1][-2:] if len(year_matches) > 1 else (year_matches[0] + year_matches[0][-2:] if year_matches else "")
                 
-                # Remove degree and dates to get institution
+                # Try to keep years as full 4 digits
+                start_year = year_matches[0] if year_matches else ""
+                end_year = year_matches[1] if len(year_matches) > 1 else year_matches[0] if year_matches else ""
+                
+                # Get institution (remove degree and dates)
                 institution = line
                 if degree_match:
                     institution = institution.replace(degree_match.group(0), '')
-                for year in years:
+                for year in year_matches:
                     institution = institution.replace(year, '')
-                institution = re.sub(r'[-–—,|\s]+', ' ', institution).strip()
+                institution = re.sub(r'[-–—,|:\s]+', ' ', institution).strip()
                 
                 current_edu = {
-                    'institution': institution[:100],
+                    'institution': institution[:150],
                     'degree': degree,
                     'field': '',
                     'startDate': start_year,
                     'endDate': end_year
                 }
-            elif current_edu and line and not line.startswith(('•', '-')):
-                # Might be field of study
-                if not current_edu['field']:
+            elif current_edu and line and not line.startswith(('•', '-', '●')):
+                # Might be field of study or additional info
+                if not current_edu['field'] and len(line) < 100:
                     current_edu['field'] = line[:100]
         
         if current_edu:
@@ -441,20 +538,55 @@ def extract_resume_data(text: str) -> dict:
     skills = []
     if 'skills' in section_indices:
         start, end = section_indices['skills']
-        skill_lines = lines[start+1:min(end, start+15)]
+        skill_lines = lines[start+1:min(end, start+20)]
         
         for line in skill_lines:
             # Split by common delimiters
-            line_skills = re.split(r'[,;•|●○▪\t]', line)
+            line_skills = re.split(r'[,;•|●○▪\t:]+', line)
             for skill in line_skills:
                 skill = skill.strip()
-                # Filter out non-skills
-                if skill and len(skill) > 1 and len(skill) < 40:
-                    if not any(h in skill.lower() for headers_list in section_headers.values() for h in headers_list):
+                # Filter out non-skills and clean up
+                skill = re.sub(r'^[-\s•●○▪]+', '', skill).strip()
+                if skill and len(skill) > 1 and len(skill) < 50:
+                    # Exclude common non-skill words
+                    if skill.lower() not in ['and', 'or', 'the', 'etc', 'others']:
                         skills.append(skill)
     
-    # Deduplicate and limit skills
-    skills = list(dict.fromkeys(skills))[:25]
+    # Deduplicate skills preserving order
+    seen = set()
+    unique_skills = []
+    for s in skills:
+        if s.lower() not in seen:
+            seen.add(s.lower())
+            unique_skills.append(s)
+    skills = unique_skills[:30]
+    
+    # =====================
+    # EXTRACT PROJECTS
+    # =====================
+    
+    projects = []
+    if 'projects' in section_indices:
+        start, end = section_indices['projects']
+        proj_lines = lines[start+1:end]
+        
+        current_proj = None
+        for line in proj_lines:
+            if not line.startswith(('•', '-', '●', '*', '○')) and len(line) > 3:
+                if current_proj:
+                    projects.append(current_proj)
+                current_proj = {
+                    'name': line[:100],
+                    'description': '',
+                    'technologies': []
+                }
+            elif current_proj and line.startswith(('•', '-', '●', '*', '○')):
+                desc = re.sub(r'^[•\-●*○]\s*', '', line).strip()
+                current_proj['description'] += ' ' + desc
+        
+        if current_proj:
+            current_proj['description'] = current_proj['description'].strip()
+            projects.append(current_proj)
     
     return {
         "personalInfo": {
@@ -463,13 +595,15 @@ def extract_resume_data(text: str) -> dict:
             "phone": phone,
             "location": location,
             "linkedin": linkedin,
+            "github": github,
             "summary": summary[:500] if summary else ""
         },
         "summary": summary[:1000] if summary else "",
         "experiences": experiences[:10],
-        "education": education[:5],
+        "education": education[:6],
         "skills": skills,
-        "raw_text": full_text[:8000]
+        "projects": projects[:8],
+        "raw_text": full_text[:10000]
     }
 
 
