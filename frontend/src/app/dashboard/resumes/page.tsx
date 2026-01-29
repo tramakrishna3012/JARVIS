@@ -353,7 +353,13 @@ export default function ResumesPage() {
                     <ResumeEditor
                         initialData={editingResume?.content}
                         onSave={handleSave}
-                        onDownload={(format) => editingResume?.id && handleDownload(editingResume.id, format)}
+                        onDownload={async (format) => {
+                            if (editingResume?.id) {
+                                await handleDownload(editingResume, format);
+                            } else {
+                                alert('Please save the resume first before downloading.');
+                            }
+                        }}
                         onClose={() => {
                             setIsEditorOpen(false);
                             setEditingResume(null);

@@ -17,7 +17,9 @@ import {
     Plus,
     Trash2,
     X,
+    LayoutTemplate,
 } from 'lucide-react';
+import TemplateSelector from './TemplateSelector';
 
 // Types for Resume Data
 export interface PersonalInfo {
@@ -77,8 +79,8 @@ const defaultResumeData: ResumeData = {
     education: [],
     skills: [],
     certifications: [],
-    template: 'modern',
-    themeColor: '#3B82F6',
+    template: 'professional',
+    themeColor: '#1E40AF',
 };
 
 interface ResumeEditorProps {
@@ -89,6 +91,7 @@ interface ResumeEditorProps {
 }
 
 const steps = [
+    { id: 'template', label: 'Template', icon: LayoutTemplate },
     { id: 'personal', label: 'Personal Info', icon: User },
     { id: 'experience', label: 'Experience', icon: Briefcase },
     { id: 'education', label: 'Education', icon: GraduationCap },
@@ -258,10 +261,10 @@ export default function ResumeEditor({
                         key={step.id}
                         onClick={() => setCurrentStep(index)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${currentStep === index
-                                ? 'bg-primary-600 text-white'
-                                : index < currentStep
-                                    ? 'bg-green-600/20 text-green-400'
-                                    : 'bg-dark-700 text-dark-400 hover:text-white'
+                            ? 'bg-primary-600 text-white'
+                            : index < currentStep
+                                ? 'bg-green-600/20 text-green-400'
+                                : 'bg-dark-700 text-dark-400 hover:text-white'
                             }`}
                     >
                         <step.icon className="w-4 h-4" />
@@ -283,12 +286,24 @@ export default function ResumeEditor({
                             className="max-w-2xl mx-auto"
                         >
                             {currentStep === 0 && (
+                                <div className="space-y-4">
+                                    <h2 className="text-2xl font-bold text-white mb-2">Choose Your Template</h2>
+                                    <p className="text-dark-400 mb-6">Select a professional template that best fits your industry and style.</p>
+                                    <TemplateSelector
+                                        selectedTemplate={data.template}
+                                        selectedColor={data.themeColor}
+                                        onSelectTemplate={(template) => setData(prev => ({ ...prev, template }))}
+                                        onSelectColor={(color) => setData(prev => ({ ...prev, themeColor: color }))}
+                                    />
+                                </div>
+                            )}
+                            {currentStep === 1 && (
                                 <PersonalInfoForm
                                     data={data.personalInfo}
                                     onChange={updatePersonalInfo}
                                 />
                             )}
-                            {currentStep === 1 && (
+                            {currentStep === 2 && (
                                 <ExperienceForm
                                     experiences={data.experiences}
                                     onAdd={addExperience}
@@ -296,7 +311,7 @@ export default function ResumeEditor({
                                     onRemove={removeExperience}
                                 />
                             )}
-                            {currentStep === 2 && (
+                            {currentStep === 3 && (
                                 <EducationForm
                                     education={data.education}
                                     onAdd={addEducation}
@@ -304,14 +319,14 @@ export default function ResumeEditor({
                                     onRemove={removeEducation}
                                 />
                             )}
-                            {currentStep === 3 && (
+                            {currentStep === 4 && (
                                 <SkillsForm
                                     skills={data.skills}
                                     onAdd={addSkill}
                                     onRemove={removeSkill}
                                 />
                             )}
-                            {currentStep === 4 && (
+                            {currentStep === 5 && (
                                 <ResumePreview data={data} />
                             )}
                         </motion.div>
@@ -319,7 +334,7 @@ export default function ResumeEditor({
                 </div>
 
                 {/* Live Preview Panel (visible on larger screens) */}
-                {currentStep < 4 && (
+                {currentStep > 0 && currentStep < 5 && (
                     <div className="hidden lg:block w-[450px] border-l border-dark-700 bg-dark-800/30 overflow-y-auto p-4">
                         <div className="sticky top-0 mb-4 pb-2 border-b border-dark-700">
                             <h3 className="text-sm font-medium text-dark-400">Live Preview</h3>
