@@ -140,6 +140,21 @@ export const resumesApi = {
         api.post('/api/resumes/ai/enhance', { jobTitle, company, description, industry }),
     aiSkills: (jobTitle: string, industry?: string, existingSkills?: string[]) =>
         api.post('/api/resumes/ai/skills', { jobTitle, industry, existingSkills }),
+    // AI Chatbot
+    aiChat: (message: string, resumeContext: any, chatHistory?: any[]) =>
+        api.post('/api/resumes/ai/chat', { message, resumeContext, chatHistory }),
+    // ATS Optimization
+    aiAtsOptimize: (resumeData: any, jobDescription?: string) =>
+        api.post('/api/resumes/ai/ats-optimize', { resumeData, jobDescription }),
+    // AI Project suggestions
+    aiProjects: (skills: string[], experienceLevel: string, industry?: string) =>
+        api.post('/api/resumes/ai/projects', { skills, experienceLevel, industry }),
+    // AI Certification suggestions
+    aiCertifications: (skills: string[], targetRole: string, industry?: string) =>
+        api.post('/api/resumes/ai/certifications', { skills, targetRole, industry }),
+    // AI Achievement suggestions
+    aiAchievements: (role: string, industry: string, skills: string[]) =>
+        api.post('/api/resumes/ai/achievements', { role, industry, skills }),
 };
 
 // Applications API

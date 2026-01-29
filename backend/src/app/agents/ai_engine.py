@@ -533,6 +533,253 @@ Return ONLY valid JSON, no markdown code blocks."""
         except Exception as e:
             print(f"Resume build error: {e}")
             return {}
+    
+    async def resume_chat(
+        self,
+        message: str,
+        resume_context: Dict[str, Any],
+        chat_history: List[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
+        """AI Chatbot for resume assistance - conversational interface"""
+        
+        history_text = ""
+        if chat_history:
+            for msg in chat_history[-5:]:  # Last 5 messages for context
+                history_text += f"{msg['role'].upper()}: {msg['content']}\n"
+        
+        prompt = f"""You are JARVIS, an AI resume assistant. Help the user improve their resume.
+
+CURRENT RESUME SUMMARY:
+- Name: {resume_context.get('name', 'Not set')}
+- Current Role: {resume_context.get('current_role', 'Not set')}
+- Years Experience: {resume_context.get('years_experience', 'Not set')}
+- Skills: {', '.join(resume_context.get('skills', [])[:10])}
+- Target Role: {resume_context.get('target_role', 'Not specified')}
+
+CHAT HISTORY:
+{history_text}
+
+USER MESSAGE: {message}
+
+Respond helpfully and concisely. If suggesting improvements, be specific.
+You can:
+1. Suggest ways to improve their resume
+2. Help write better descriptions
+3. Recommend skills to add
+4. Provide career advice
+5. Help with ATS optimization
+
+Return JSON format:
+{{
+    "response": "Your helpful response",
+    "suggestions": ["optional list of quick actions"],
+    "action": "none|improve_summary|add_skill|improve_experience|suggest_certifications"
+}}"""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=500
+            )
+            
+            content = response.choices[0].message.content.strip()
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            content = content.strip()
+            
+            return json.loads(content)
+        except Exception as e:
+            print(f"Chat error: {e}")
+            return {
+                "response": "I'm having trouble processing that. Could you try rephrasing?",
+                "suggestions": [],
+                "action": "none"
+            }
+    
+    async def ats_optimize(
+        self,
+        resume_data: Dict[str, Any],
+        job_description: str = None
+    ) -> Dict[str, Any]:
+        """Optimize resume for ATS (Applicant Tracking Systems)"""
+        
+        prompt = f"""Analyze this resume for ATS (Applicant Tracking System) optimization.
+
+RESUME DATA:
+{json.dumps(resume_data, indent=2, default=str)[:2000]}
+
+JOB DESCRIPTION (if provided):
+{job_description or 'Not provided - give general ATS tips'}
+
+Analyze and return JSON:
+{{
+    "ats_score": 0-100,
+    "keyword_suggestions": ["keyword1", "keyword2"],
+    "formatting_issues": ["issue1", "issue2"],
+    "missing_sections": ["section1"],
+    "improvements": [
+        {{"section": "summary", "suggestion": "Add more keywords"}},
+        {{"section": "experience", "suggestion": "Use action verbs"}}
+    ],
+    "strengths": ["strength1", "strength2"]
+}}"""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4,
+                max_tokens=800
+            )
+            
+            content = response.choices[0].message.content.strip()
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            
+            return json.loads(content.strip())
+        except Exception as e:
+            print(f"ATS optimize error: {e}")
+            return {"ats_score": 0, "improvements": [], "error": str(e)}
+    
+    async def generate_projects(
+        self,
+        skills: List[str],
+        experience_level: str,
+        industry: str = None
+    ) -> List[Dict[str, Any]]:
+        """Generate project suggestions based on skills"""
+        
+        prompt = f"""Suggest 3 professional projects for a resume based on these skills.
+
+SKILLS: {', '.join(skills[:15])}
+EXPERIENCE LEVEL: {experience_level}
+INDUSTRY: {industry or 'Technology'}
+
+Return JSON array with realistic project suggestions:
+[
+    {{
+        "name": "Project Name",
+        "description": "2-3 sentence description of what was built",
+        "technologies": ["Tech1", "Tech2", "Tech3"],
+        "highlights": ["Achievement 1", "Achievement 2"],
+        "type": "personal|work|freelance|opensource"
+    }}
+]"""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=600
+            )
+            
+            content = response.choices[0].message.content.strip()
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            
+            return json.loads(content.strip())
+        except Exception as e:
+            print(f"Projects generation error: {e}")
+            return []
+    
+    async def suggest_certifications(
+        self,
+        skills: List[str],
+        target_role: str,
+        industry: str = None
+    ) -> List[Dict[str, Any]]:
+        """Suggest relevant certifications based on target role"""
+        
+        prompt = f"""Suggest relevant certifications for this professional.
+
+TARGET ROLE: {target_role}
+CURRENT SKILLS: {', '.join(skills[:10])}
+INDUSTRY: {industry or 'Technology'}
+
+Return JSON array of certification suggestions:
+[
+    {{
+        "name": "Certification Name",
+        "issuer": "Issuing Organization",
+        "relevance": "high|medium",
+        "reason": "Why this certification helps",
+        "estimated_time": "1-3 months"
+    }}
+]
+
+Suggest 4-5 real, recognized certifications."""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.5,
+                max_tokens=500
+            )
+            
+            content = response.choices[0].message.content.strip()
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            
+            return json.loads(content.strip())
+        except Exception as e:
+            print(f"Certification suggestion error: {e}")
+            return []
+    
+    async def generate_achievements(
+        self,
+        role: str,
+        industry: str,
+        skills: List[str]
+    ) -> List[Dict[str, str]]:
+        """Generate achievement suggestions based on role"""
+        
+        prompt = f"""Generate 5 professional achievement examples for a resume.
+
+ROLE: {role}
+INDUSTRY: {industry or 'Technology'}
+SKILLS: {', '.join(skills[:8])}
+
+Return JSON array of achievement suggestions that can be customized:
+[
+    {{
+        "title": "Achievement Title",
+        "description": "Description with metrics placeholder like X%, Y users, Z reduction",
+        "category": "performance|leadership|innovation|cost-saving|growth"
+    }}
+]
+
+Make them specific, quantifiable, and impressive."""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=500
+            )
+            
+            content = response.choices[0].message.content.strip()
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            
+            return json.loads(content.strip())
+        except Exception as e:
+            print(f"Achievement generation error: {e}")
+            return []
 
 
 # Singleton instance

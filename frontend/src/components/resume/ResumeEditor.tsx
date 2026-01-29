@@ -21,8 +21,15 @@ import {
     Sparkles,
     Wand2,
     Loader2,
+    Trophy,
+    FolderGit2,
+    Languages,
+    Globe,
+    Link,
+    ExternalLink,
 } from 'lucide-react';
 import TemplateSelector from './TemplateSelector';
+import AIResumeChatbot from './AIResumeChatbot';
 import { resumesApi } from '../../lib/api';
 
 // Types for Resume Data
@@ -62,12 +69,49 @@ export interface Education {
     gpa?: string;
 }
 
+export interface Certification {
+    id: string;
+    name: string;
+    issuer: string;
+    date: string;
+    expiryDate?: string;
+    credentialId?: string;
+    url?: string;
+}
+
+export interface Achievement {
+    id: string;
+    title: string;
+    description: string;
+    date: string;
+    category: string;
+}
+
+export interface Project {
+    id: string;
+    name: string;
+    description: string;
+    technologies: string[];
+    url?: string;
+    github?: string;
+    highlights: string[];
+}
+
+export interface Language {
+    id: string;
+    language: string;
+    proficiency: 'native' | 'fluent' | 'advanced' | 'intermediate' | 'basic';
+}
+
 export interface ResumeData {
     personalInfo: PersonalInfo;
     experiences: Experience[];
     education: Education[];
     skills: string[];
-    certifications: string[];
+    certifications: Certification[];
+    achievements: Achievement[];
+    projects: Project[];
+    languages: Language[];
     template: string;
     themeColor: string;
 }
@@ -89,6 +133,9 @@ const defaultResumeData: ResumeData = {
     education: [],
     skills: [],
     certifications: [],
+    achievements: [],
+    projects: [],
+    languages: [],
     template: 'professional',
     themeColor: '#1E40AF',
 };
@@ -102,10 +149,14 @@ interface ResumeEditorProps {
 
 const steps = [
     { id: 'template', label: 'Template', icon: LayoutTemplate },
-    { id: 'personal', label: 'Personal Info', icon: User },
+    { id: 'personal', label: 'Personal', icon: User },
     { id: 'experience', label: 'Experience', icon: Briefcase },
     { id: 'education', label: 'Education', icon: GraduationCap },
     { id: 'skills', label: 'Skills', icon: Wrench },
+    { id: 'projects', label: 'Projects', icon: FolderGit2 },
+    { id: 'certifications', label: 'Certs', icon: Award },
+    { id: 'achievements', label: 'Awards', icon: Trophy },
+    { id: 'languages', label: 'Languages', icon: Globe },
     { id: 'preview', label: 'Preview', icon: Eye },
 ];
 
@@ -282,6 +333,132 @@ export default function ResumeEditor({
         }));
     };
 
+    // Project handlers
+    const addProject = () => {
+        const newProject: Project = {
+            id: Date.now().toString(),
+            name: '',
+            description: '',
+            technologies: [],
+            url: '',
+            github: '',
+            highlights: [],
+        };
+        setData((prev) => ({
+            ...prev,
+            projects: [...prev.projects, newProject],
+        }));
+    };
+
+    const updateProject = (id: string, field: keyof Project, value: any) => {
+        setData((prev) => ({
+            ...prev,
+            projects: prev.projects.map((p) =>
+                p.id === id ? { ...p, [field]: value } : p
+            ),
+        }));
+    };
+
+    const removeProject = (id: string) => {
+        setData((prev) => ({
+            ...prev,
+            projects: prev.projects.filter((p) => p.id !== id),
+        }));
+    };
+
+    // Certification handlers
+    const addCertification = () => {
+        const newCert: Certification = {
+            id: Date.now().toString(),
+            name: '',
+            issuer: '',
+            date: '',
+            expiryDate: '',
+            credentialId: '',
+            url: '',
+        };
+        setData((prev) => ({
+            ...prev,
+            certifications: [...prev.certifications, newCert],
+        }));
+    };
+
+    const updateCertification = (id: string, field: keyof Certification, value: string) => {
+        setData((prev) => ({
+            ...prev,
+            certifications: prev.certifications.map((c) =>
+                c.id === id ? { ...c, [field]: value } : c
+            ),
+        }));
+    };
+
+    const removeCertification = (id: string) => {
+        setData((prev) => ({
+            ...prev,
+            certifications: prev.certifications.filter((c) => c.id !== id),
+        }));
+    };
+
+    // Achievement handlers
+    const addAchievement = () => {
+        const newAchievement: Achievement = {
+            id: Date.now().toString(),
+            title: '',
+            description: '',
+            date: '',
+            category: 'performance',
+        };
+        setData((prev) => ({
+            ...prev,
+            achievements: [...prev.achievements, newAchievement],
+        }));
+    };
+
+    const updateAchievement = (id: string, field: keyof Achievement, value: string) => {
+        setData((prev) => ({
+            ...prev,
+            achievements: prev.achievements.map((a) =>
+                a.id === id ? { ...a, [field]: value } : a
+            ),
+        }));
+    };
+
+    const removeAchievement = (id: string) => {
+        setData((prev) => ({
+            ...prev,
+            achievements: prev.achievements.filter((a) => a.id !== id),
+        }));
+    };
+
+    // Language handlers
+    const addLanguage = () => {
+        const newLanguage: Language = {
+            id: Date.now().toString(),
+            language: '',
+            proficiency: 'intermediate',
+        };
+        setData((prev) => ({
+            ...prev,
+            languages: [...prev.languages, newLanguage],
+        }));
+    };
+
+    const updateLanguage = (id: string, field: keyof Language, value: any) => {
+        setData((prev) => ({
+            ...prev,
+            languages: prev.languages.map((l) =>
+                l.id === id ? { ...l, [field]: value } : l
+            ),
+        }));
+    };
+
+    const removeLanguage = (id: string) => {
+        setData((prev) => ({
+            ...prev,
+            languages: prev.languages.filter((l) => l.id !== id),
+        }));
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         try {
@@ -415,6 +592,38 @@ export default function ResumeEditor({
                                 />
                             )}
                             {currentStep === 5 && (
+                                <ProjectsForm
+                                    projects={data.projects}
+                                    onAdd={addProject}
+                                    onUpdate={updateProject}
+                                    onRemove={removeProject}
+                                />
+                            )}
+                            {currentStep === 6 && (
+                                <CertificationsForm
+                                    certifications={data.certifications}
+                                    onAdd={addCertification}
+                                    onUpdate={updateCertification}
+                                    onRemove={removeCertification}
+                                />
+                            )}
+                            {currentStep === 7 && (
+                                <AchievementsForm
+                                    achievements={data.achievements}
+                                    onAdd={addAchievement}
+                                    onUpdate={updateAchievement}
+                                    onRemove={removeAchievement}
+                                />
+                            )}
+                            {currentStep === 8 && (
+                                <LanguagesForm
+                                    languages={data.languages}
+                                    onAdd={addLanguage}
+                                    onUpdate={updateLanguage}
+                                    onRemove={removeLanguage}
+                                />
+                            )}
+                            {currentStep === 9 && (
                                 <ResumePreview data={data} />
                             )}
                         </motion.div>
@@ -422,7 +631,7 @@ export default function ResumeEditor({
                 </div>
 
                 {/* Live Preview Panel (visible on larger screens) */}
-                {currentStep > 0 && currentStep < 5 && (
+                {currentStep > 0 && currentStep < 9 && (
                     <div className="hidden lg:block w-[450px] border-l border-dark-700 bg-dark-800/30 overflow-y-auto p-4">
                         <div className="sticky top-0 mb-4 pb-2 border-b border-dark-700">
                             <h3 className="text-sm font-medium text-dark-400">Live Preview</h3>
@@ -433,6 +642,9 @@ export default function ResumeEditor({
                     </div>
                 )}
             </div>
+
+            {/* AI Chatbot */}
+            <AIResumeChatbot resumeData={data} />
 
             {/* Footer Navigation */}
             <footer className="flex items-center justify-between px-6 py-4 border-t border-dark-700 bg-dark-800/80">
@@ -1006,6 +1218,439 @@ function SkillsForm({
                             </button>
                         ))}
                     </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Projects Form
+function ProjectsForm({
+    projects,
+    onAdd,
+    onUpdate,
+    onRemove,
+}: {
+    projects: Project[];
+    onAdd: () => void;
+    onUpdate: (id: string, field: keyof Project, value: any) => void;
+    onRemove: (id: string) => void;
+}) {
+    const [techInput, setTechInput] = useState<{ [key: string]: string }>({});
+
+    const addTech = (projectId: string) => {
+        const tech = techInput[projectId]?.trim();
+        if (tech) {
+            const project = projects.find(p => p.id === projectId);
+            if (project && !project.technologies.includes(tech)) {
+                onUpdate(projectId, 'technologies', [...project.technologies, tech]);
+                setTechInput(prev => ({ ...prev, [projectId]: '' }));
+            }
+        }
+    };
+
+    const removeTech = (projectId: string, tech: string) => {
+        const project = projects.find(p => p.id === projectId);
+        if (project) {
+            onUpdate(projectId, 'technologies', project.technologies.filter(t => t !== tech));
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Projects</h2>
+                <button onClick={onAdd} className="btn-secondary flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Project
+                </button>
+            </div>
+
+            {projects.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-dark-700 rounded-xl">
+                    <FolderGit2 className="w-12 h-12 text-dark-500 mx-auto mb-4" />
+                    <p className="text-dark-400">No projects added yet</p>
+                    <button onClick={onAdd} className="text-primary-400 hover:text-primary-300 mt-2">
+                        Add your first project
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {projects.map((project, index) => (
+                        <motion.div
+                            key={project.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-4 bg-dark-800 rounded-xl border border-dark-700"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-medium text-white">Project {index + 1}</h3>
+                                <button
+                                    onClick={() => onRemove(project.id)}
+                                    className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Project Name</label>
+                                    <input
+                                        type="text"
+                                        value={project.name}
+                                        onChange={(e) => onUpdate(project.id, 'name', e.target.value)}
+                                        placeholder="My Awesome Project"
+                                        className="input w-full"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Description</label>
+                                    <textarea
+                                        value={project.description}
+                                        onChange={(e) => onUpdate(project.id, 'description', e.target.value)}
+                                        placeholder="Brief description of the project..."
+                                        rows={2}
+                                        className="input w-full resize-none"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-dark-300 mb-2">Live URL</label>
+                                        <input
+                                            type="url"
+                                            value={project.url || ''}
+                                            onChange={(e) => onUpdate(project.id, 'url', e.target.value)}
+                                            placeholder="https://myproject.com"
+                                            className="input w-full"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-dark-300 mb-2">GitHub URL</label>
+                                        <input
+                                            type="url"
+                                            value={project.github || ''}
+                                            onChange={(e) => onUpdate(project.id, 'github', e.target.value)}
+                                            placeholder="https://github.com/..."
+                                            className="input w-full"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Technologies</label>
+                                    <div className="flex gap-2 mb-2">
+                                        <input
+                                            type="text"
+                                            value={techInput[project.id] || ''}
+                                            onChange={(e) => setTechInput(prev => ({ ...prev, [project.id]: e.target.value }))}
+                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTech(project.id))}
+                                            placeholder="Add technology..."
+                                            className="input flex-1"
+                                        />
+                                        <button onClick={() => addTech(project.id)} className="btn-secondary">
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {project.technologies.map((tech) => (
+                                            <span key={tech} className="px-3 py-1 bg-primary-600/20 text-primary-400 rounded-full text-sm flex items-center gap-2">
+                                                {tech}
+                                                <button onClick={() => removeTech(project.id, tech)} className="hover:text-red-400">
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Certifications Form
+function CertificationsForm({
+    certifications,
+    onAdd,
+    onUpdate,
+    onRemove,
+}: {
+    certifications: Certification[];
+    onAdd: () => void;
+    onUpdate: (id: string, field: keyof Certification, value: string) => void;
+    onRemove: (id: string) => void;
+}) {
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Certifications</h2>
+                <button onClick={onAdd} className="btn-secondary flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Certification
+                </button>
+            </div>
+
+            {certifications.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-dark-700 rounded-xl">
+                    <Award className="w-12 h-12 text-dark-500 mx-auto mb-4" />
+                    <p className="text-dark-400">No certifications added yet</p>
+                    <button onClick={onAdd} className="text-primary-400 hover:text-primary-300 mt-2">
+                        Add your first certification
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {certifications.map((cert, index) => (
+                        <motion.div
+                            key={cert.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-4 bg-dark-800 rounded-xl border border-dark-700"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-medium text-white">Certification {index + 1}</h3>
+                                <button
+                                    onClick={() => onRemove(cert.id)}
+                                    className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Certification Name</label>
+                                    <input
+                                        type="text"
+                                        value={cert.name}
+                                        onChange={(e) => onUpdate(cert.id, 'name', e.target.value)}
+                                        placeholder="AWS Certified Solutions Architect"
+                                        className="input w-full"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Issuing Organization</label>
+                                    <input
+                                        type="text"
+                                        value={cert.issuer}
+                                        onChange={(e) => onUpdate(cert.id, 'issuer', e.target.value)}
+                                        placeholder="Amazon Web Services"
+                                        className="input w-full"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Issue Date</label>
+                                    <input
+                                        type="month"
+                                        value={cert.date}
+                                        onChange={(e) => onUpdate(cert.id, 'date', e.target.value)}
+                                        className="input w-full"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Credential ID</label>
+                                    <input
+                                        type="text"
+                                        value={cert.credentialId || ''}
+                                        onChange={(e) => onUpdate(cert.id, 'credentialId', e.target.value)}
+                                        placeholder="ABC123XYZ"
+                                        className="input w-full"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Credential URL</label>
+                                    <input
+                                        type="url"
+                                        value={cert.url || ''}
+                                        onChange={(e) => onUpdate(cert.id, 'url', e.target.value)}
+                                        placeholder="https://verify.aws.com/..."
+                                        className="input w-full"
+                                    />
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Achievements Form
+function AchievementsForm({
+    achievements,
+    onAdd,
+    onUpdate,
+    onRemove,
+}: {
+    achievements: Achievement[];
+    onAdd: () => void;
+    onUpdate: (id: string, field: keyof Achievement, value: string) => void;
+    onRemove: (id: string) => void;
+}) {
+    const categories = ['performance', 'leadership', 'innovation', 'cost-saving', 'growth', 'award'];
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Achievements & Awards</h2>
+                <button onClick={onAdd} className="btn-secondary flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Achievement
+                </button>
+            </div>
+
+            {achievements.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-dark-700 rounded-xl">
+                    <Trophy className="w-12 h-12 text-dark-500 mx-auto mb-4" />
+                    <p className="text-dark-400">No achievements added yet</p>
+                    <button onClick={onAdd} className="text-primary-400 hover:text-primary-300 mt-2">
+                        Add your first achievement
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {achievements.map((achievement, index) => (
+                        <motion.div
+                            key={achievement.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-4 bg-dark-800 rounded-xl border border-dark-700"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-medium text-white">Achievement {index + 1}</h3>
+                                <button
+                                    onClick={() => onRemove(achievement.id)}
+                                    className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-dark-300 mb-2">Title</label>
+                                        <input
+                                            type="text"
+                                            value={achievement.title}
+                                            onChange={(e) => onUpdate(achievement.id, 'title', e.target.value)}
+                                            placeholder="Top Performer Award"
+                                            className="input w-full"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-dark-300 mb-2">Date</label>
+                                        <input
+                                            type="month"
+                                            value={achievement.date}
+                                            onChange={(e) => onUpdate(achievement.id, 'date', e.target.value)}
+                                            className="input w-full"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Category</label>
+                                    <select
+                                        value={achievement.category}
+                                        onChange={(e) => onUpdate(achievement.id, 'category', e.target.value)}
+                                        className="input w-full"
+                                    >
+                                        {categories.map(cat => (
+                                            <option key={cat} value={cat}>
+                                                {cat.charAt(0).toUpperCase() + cat.slice(1).replace('-', ' ')}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-dark-300 mb-2">Description</label>
+                                    <textarea
+                                        value={achievement.description}
+                                        onChange={(e) => onUpdate(achievement.id, 'description', e.target.value)}
+                                        placeholder="Describe your achievement and its impact..."
+                                        rows={2}
+                                        className="input w-full resize-none"
+                                    />
+                                </div>
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Languages Form
+function LanguagesForm({
+    languages,
+    onAdd,
+    onUpdate,
+    onRemove,
+}: {
+    languages: Language[];
+    onAdd: () => void;
+    onUpdate: (id: string, field: keyof Language, value: any) => void;
+    onRemove: (id: string) => void;
+}) {
+    const proficiencyLevels: Language['proficiency'][] = ['native', 'fluent', 'advanced', 'intermediate', 'basic'];
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Languages</h2>
+                <button onClick={onAdd} className="btn-secondary flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Language
+                </button>
+            </div>
+
+            {languages.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-dark-700 rounded-xl">
+                    <Globe className="w-12 h-12 text-dark-500 mx-auto mb-4" />
+                    <p className="text-dark-400">No languages added yet</p>
+                    <button onClick={onAdd} className="text-primary-400 hover:text-primary-300 mt-2">
+                        Add your first language
+                    </button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {languages.map((lang) => (
+                        <motion.div
+                            key={lang.id}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="p-4 bg-dark-800 rounded-xl border border-dark-700 flex items-center gap-4"
+                        >
+                            <div className="flex-1 space-y-3">
+                                <input
+                                    type="text"
+                                    value={lang.language}
+                                    onChange={(e) => onUpdate(lang.id, 'language', e.target.value)}
+                                    placeholder="Language name"
+                                    className="input w-full"
+                                />
+                                <select
+                                    value={lang.proficiency}
+                                    onChange={(e) => onUpdate(lang.id, 'proficiency', e.target.value)}
+                                    className="input w-full"
+                                >
+                                    {proficiencyLevels.map(level => (
+                                        <option key={level} value={level}>
+                                            {level.charAt(0).toUpperCase() + level.slice(1)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button
+                                onClick={() => onRemove(lang.id)}
+                                className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </motion.div>
+                    ))}
                 </div>
             )}
         </div>

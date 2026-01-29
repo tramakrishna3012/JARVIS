@@ -192,6 +192,93 @@ async def ai_suggest_skills(
     
     return {"success": True, "suggestions": suggestions}
 
+
+@router.post("/ai/chat")
+async def ai_resume_chat(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """AI Chatbot for resume assistance"""
+    from app.agents.ai_engine import ai_engine
+    
+    message = request.get("message", "")
+    resume_context = request.get("resumeContext", {})
+    chat_history = request.get("chatHistory", [])
+    
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+    
+    response = await ai_engine.resume_chat(message, resume_context, chat_history)
+    
+    return {"success": True, **response}
+
+
+@router.post("/ai/ats-optimize")
+async def ai_ats_optimize(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Get ATS optimization suggestions"""
+    from app.agents.ai_engine import ai_engine
+    
+    resume_data = request.get("resumeData", {})
+    job_description = request.get("jobDescription")
+    
+    result = await ai_engine.ats_optimize(resume_data, job_description)
+    
+    return {"success": True, **result}
+
+
+@router.post("/ai/projects")
+async def ai_suggest_projects(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Get AI-generated project suggestions"""
+    from app.agents.ai_engine import ai_engine
+    
+    skills = request.get("skills", [])
+    experience_level = request.get("experienceLevel", "mid")
+    industry = request.get("industry")
+    
+    projects = await ai_engine.generate_projects(skills, experience_level, industry)
+    
+    return {"success": True, "projects": projects}
+
+
+@router.post("/ai/certifications")
+async def ai_suggest_certifications(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Get certification suggestions"""
+    from app.agents.ai_engine import ai_engine
+    
+    skills = request.get("skills", [])
+    target_role = request.get("targetRole", "Software Engineer")
+    industry = request.get("industry")
+    
+    certifications = await ai_engine.suggest_certifications(skills, target_role, industry)
+    
+    return {"success": True, "certifications": certifications}
+
+
+@router.post("/ai/achievements")
+async def ai_generate_achievements(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Get AI-generated achievement suggestions"""
+    from app.agents.ai_engine import ai_engine
+    
+    role = request.get("role", "Software Engineer")
+    industry = request.get("industry", "Technology")
+    skills = request.get("skills", [])
+    
+    achievements = await ai_engine.generate_achievements(role, industry, skills)
+    
+    return {"success": True, "achievements": achievements}
+
 @router.post("/upload")
 async def upload_resume(
     file: UploadFile = File(...),
