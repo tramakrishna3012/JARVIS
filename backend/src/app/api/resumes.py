@@ -646,10 +646,11 @@ async def update_resume(
 async def download_resume(
     resume_id: int,
     format: str = "pdf",
+    template: str = "professional",
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Download resume as PDF or DOCX"""
+    """Download resume as PDF or DOCX with optional template selection"""
     from app.services.resume_builder import resume_builder
     
     result = await db.execute(
@@ -665,9 +666,12 @@ async def download_resume(
     content = resume.content or {}
     theme_color = getattr(resume, 'theme_color', '#3B82F6') or '#3B82F6'
     
+    # Use template from resume if not specified in query
+    template_id = template or getattr(resume, 'template', 'professional') or 'professional'
+    
     if format.lower() == "docx":
         try:
-            file_bytes = resume_builder.generate_docx(content, theme_color)
+            file_bytes = resume_builder.generate_docx(content, theme_color, template_id)
             media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             filename = f"{resume.name}.docx"
         except Exception as e:
@@ -675,7 +679,7 @@ async def download_resume(
     else:
         # Default to PDF
         try:
-            file_bytes = resume_builder.generate_pdf(content, theme_color)
+            file_bytes = resume_builder.generate_pdf(content, theme_color, template_id)
             media_type = "application/pdf"
             filename = f"{resume.name}.pdf"
         except Exception as e:

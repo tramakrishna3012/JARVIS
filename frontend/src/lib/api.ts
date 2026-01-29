@@ -126,8 +126,8 @@ export const resumesApi = {
     create: (data: any) => api.post('/api/resumes', data),
     generate: (data: any) => api.post('/api/resumes/generate', data),
     update: (id: number | string, data: any) => api.put(`/api/resumes/${id}`, data),
-    download: (id: number | string, format: 'pdf' | 'docx' = 'pdf') =>
-        api.get(`/api/resumes/${id}/download`, { params: { format }, responseType: 'blob' }),
+    download: (id: number | string, format: 'pdf' | 'docx' = 'pdf', template: string = 'professional') =>
+        api.get(`/api/resumes/${id}/download`, { params: { format, template }, responseType: 'blob' }),
     upload: (formData: FormData) => api.post('/api/resumes/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     }),

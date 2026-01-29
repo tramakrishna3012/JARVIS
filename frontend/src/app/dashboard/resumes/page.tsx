@@ -16,7 +16,7 @@ export default function ResumesPage() {
     const [editingResume, setEditingResume] = useState<any>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [createMode, setCreateMode] = useState<CreateMode>(null);
-    const [selectedTemplate, setSelectedTemplate] = useState('modern');
+    const [selectedTemplate, setSelectedTemplate] = useState('professional');
     const [selectedColor, setSelectedColor] = useState('#3B82F6');
 
     const { data: resumes, isLoading } = useQuery({
@@ -128,16 +128,18 @@ export default function ResumesPage() {
         }
     };
 
-    const handleDownload = async (resumeId: string, format: 'pdf' | 'docx') => {
+    const handleDownload = async (resume: any, format: 'pdf' | 'docx') => {
         try {
-            const response = await resumesApi.download(resumeId, format);
+            // Get template from resume or use default
+            const template = resume.template || 'professional';
+            const response = await resumesApi.download(resume.id, format, template);
             const blob = new Blob([response.data], {
                 type: format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `resume.${format}`;
+            a.download = `${resume.name || 'resume'}.${format}`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -242,7 +244,7 @@ export default function ResumesPage() {
                                     Edit
                                 </button>
                                 <button
-                                    onClick={() => handleDownload(resume.id, 'pdf')}
+                                    onClick={() => handleDownload(resume, 'pdf')}
                                     className="btn-ghost flex-1 text-sm py-1.5"
                                 >
                                     <Download className="w-4 h-4 mr-2" />
