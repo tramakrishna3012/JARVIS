@@ -287,6 +287,222 @@ Return ONLY valid JSON."""
                 "action_required": False,
                 "suggested_action": ""
             }
+    
+    async def generate_professional_summary(
+        self,
+        user_info: Dict[str, Any],
+        target_role: Optional[str] = None
+    ) -> str:
+        """Generate a professional summary for resume"""
+        
+        prompt = f"""Write a compelling professional summary for a resume.
+
+USER INFORMATION:
+- Name: {user_info.get('name', 'Professional')}
+- Current/Recent Role: {user_info.get('current_role', 'Not specified')}
+- Years of Experience: {user_info.get('years_experience', 'Not specified')}
+- Key Skills: {user_info.get('skills', [])}
+- Industry: {user_info.get('industry', 'Technology')}
+- Notable Achievements: {user_info.get('achievements', [])}
+
+TARGET ROLE: {target_role or 'General professional position'}
+
+RULES:
+1. Keep it to 2-4 sentences (50-100 words)
+2. Start with years of experience and expertise area
+3. Highlight key achievements with metrics if available
+4. End with career goals aligned to target role
+5. Use action words and professional tone
+6. Make it ATS-friendly
+
+Write the professional summary:"""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.6,
+                max_tokens=200
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"Summary generation error: {e}")
+            return ""
+    
+    async def enhance_experience_description(
+        self,
+        job_title: str,
+        company: str,
+        basic_description: str,
+        industry: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Enhance a job experience with better descriptions and achievements"""
+        
+        prompt = f"""Enhance this job experience for a professional resume.
+
+JOB DETAILS:
+- Title: {job_title}
+- Company: {company}
+- Industry: {industry or 'Technology'}
+- Current Description: {basic_description}
+
+Generate:
+1. An improved 1-2 sentence job description
+2. 3-4 bullet point achievements (start with action verbs, include metrics where possible)
+
+Return JSON:
+{{
+    "description": "Improved description of the role",
+    "highlights": [
+        "Achieved X by implementing Y, resulting in Z% improvement",
+        "Led team of N to deliver project ahead of schedule",
+        "Developed and maintained..."
+    ]
+}}
+
+RULES:
+- Use strong action verbs (Led, Developed, Implemented, Achieved, etc.)
+- Include quantifiable metrics where possible
+- Make achievements specific and impactful
+- Keep each bullet to 1-2 lines
+
+Return ONLY valid JSON."""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.6,
+                max_tokens=400
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            print(f"Experience enhancement error: {e}")
+            return {
+                "description": basic_description,
+                "highlights": []
+            }
+    
+    async def suggest_skills(
+        self,
+        job_title: str,
+        industry: Optional[str] = None,
+        existing_skills: List[str] = []
+    ) -> Dict[str, List[str]]:
+        """Suggest relevant skills for a job role"""
+        
+        prompt = f"""Suggest skills for a {job_title} resume.
+
+CONTEXT:
+- Target Role: {job_title}
+- Industry: {industry or 'Technology'}
+- Existing Skills: {existing_skills}
+
+Return JSON with categorized skill suggestions:
+{{
+    "technical_skills": ["skill1", "skill2", ...],
+    "soft_skills": ["skill1", "skill2", ...],
+    "tools": ["tool1", "tool2", ...],
+    "certifications": ["cert1", "cert2", ...]
+}}
+
+RULES:
+1. Suggest 5-8 skills per category
+2. Prioritize in-demand, ATS-friendly skills
+3. Don't repeat existing skills
+4. Focus on skills relevant to the role
+
+Return ONLY valid JSON."""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.5,
+                max_tokens=300
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            print(f"Skills suggestion error: {e}")
+            return {
+                "technical_skills": [],
+                "soft_skills": [],
+                "tools": [],
+                "certifications": []
+            }
+    
+    async def build_complete_resume(
+        self,
+        user_input: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Build a complete resume from user input using AI"""
+        
+        prompt = f"""Create a complete professional resume based on this information.
+
+USER INPUT:
+{json.dumps(user_input, indent=2, default=str)}
+
+Generate a complete resume in this JSON format:
+{{
+    "personalInfo": {{
+        "fullName": "Name from input",
+        "email": "email@example.com",
+        "phone": "+1234567890",
+        "location": "City, State",
+        "linkedin": "linkedin.com/in/profile",
+        "github": "github.com/username",
+        "portfolio": "portfolio.com",
+        "summary": "Professional summary 2-4 sentences"
+    }},
+    "experiences": [
+        {{
+            "id": "1",
+            "company": "Company Name",
+            "position": "Job Title",
+            "location": "City, State",
+            "startDate": "2022-01",
+            "endDate": "2024-01",
+            "current": false,
+            "description": "Brief role description",
+            "highlights": ["Achievement 1", "Achievement 2", "Achievement 3"]
+        }}
+    ],
+    "education": [
+        {{
+            "id": "1",
+            "institution": "University Name",
+            "degree": "Bachelor of Science",
+            "field": "Computer Science",
+            "location": "City, State",
+            "startDate": "2016-08",
+            "endDate": "2020-05"
+        }}
+    ],
+    "skills": ["Skill1", "Skill2", "Skill3", "Skill4", "Skill5"],
+    "certifications": []
+}}
+
+RULES:
+1. Use ONLY information provided - do not invent details
+2. If fields are missing, leave them as empty strings
+3. For experiences, create impactful achievement bullets
+4. Generate a compelling professional summary
+5. Suggest relevant skills based on the role
+6. Make it ATS-friendly and professional
+
+Return ONLY valid JSON."""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.5,
+                max_tokens=2500
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            print(f"Resume build error: {e}")
+            return {}
 
 
 # Singleton instance

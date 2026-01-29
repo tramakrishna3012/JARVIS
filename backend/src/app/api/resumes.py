@@ -111,6 +111,78 @@ async def generate_resume(
     return ResumeResponse.model_validate(resume)
 
 
+@router.post("/ai/build")
+async def ai_build_resume(
+    request: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Build a complete resume using AI from user input"""
+    from app.agents.ai_engine import ai_engine
+    
+    user_input = request.get("userInput", {})
+    
+    # Call AI to build resume
+    resume_data = await ai_engine.build_complete_resume(user_input)
+    
+    if not resume_data:
+        raise HTTPException(status_code=500, detail="AI failed to generate resume")
+    
+    return {"success": True, "resume": resume_data}
+
+
+@router.post("/ai/summary")
+async def ai_generate_summary(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate a professional summary using AI"""
+    from app.agents.ai_engine import ai_engine
+    
+    user_info = request.get("userInfo", {})
+    target_role = request.get("targetRole")
+    
+    summary = await ai_engine.generate_professional_summary(user_info, target_role)
+    
+    return {"success": True, "summary": summary}
+
+
+@router.post("/ai/enhance")
+async def ai_enhance_experience(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Enhance job experience description using AI"""
+    from app.agents.ai_engine import ai_engine
+    
+    job_title = request.get("jobTitle", "")
+    company = request.get("company", "")
+    description = request.get("description", "")
+    industry = request.get("industry")
+    
+    enhanced = await ai_engine.enhance_experience_description(
+        job_title, company, description, industry
+    )
+    
+    return {"success": True, "enhanced": enhanced}
+
+
+@router.post("/ai/skills")
+async def ai_suggest_skills(
+    request: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Get AI-suggested skills for a job role"""
+    from app.agents.ai_engine import ai_engine
+    
+    job_title = request.get("jobTitle", "Software Engineer")
+    industry = request.get("industry")
+    existing_skills = request.get("existingSkills", [])
+    
+    suggestions = await ai_engine.suggest_skills(job_title, industry, existing_skills)
+    
+    return {"success": True, "suggestions": suggestions}
+
 @router.post("/upload")
 async def upload_resume(
     file: UploadFile = File(...),

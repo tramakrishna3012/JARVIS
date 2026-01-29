@@ -133,6 +133,13 @@ export const resumesApi = {
     }),
     analyze: (id: number) => api.post(`/api/resumes/${id}/analyze`),
     delete: (id: number | string) => api.delete(`/api/resumes/${id}`),
+    // AI-powered resume building
+    aiBuild: (userInput: any) => api.post('/api/resumes/ai/build', { userInput }),
+    aiSummary: (userInfo: any, targetRole?: string) => api.post('/api/resumes/ai/summary', { userInfo, targetRole }),
+    aiEnhance: (jobTitle: string, company: string, description: string, industry?: string) =>
+        api.post('/api/resumes/ai/enhance', { jobTitle, company, description, industry }),
+    aiSkills: (jobTitle: string, industry?: string, existingSkills?: string[]) =>
+        api.post('/api/resumes/ai/skills', { jobTitle, industry, existingSkills }),
 };
 
 // Applications API

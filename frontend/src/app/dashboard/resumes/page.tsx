@@ -3,16 +3,18 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Plus, Download, Edit, Trash2, Wand2, Upload, FileUp, LayoutTemplate, X } from 'lucide-react';
+import { FileText, Plus, Download, Edit, Trash2, Wand2, Upload, FileUp, LayoutTemplate, X, Sparkles } from 'lucide-react';
 import { resumesApi } from '../../../lib/api';
 import ResumeEditor, { ResumeData } from '../../../components/resume/ResumeEditor';
 import TemplateSelector from '../../../components/resume/TemplateSelector';
+import AIResumeBuilder from '../../../components/resume/AIResumeBuilder';
 
-type CreateMode = 'scratch' | 'upload' | 'template' | null;
+type CreateMode = 'scratch' | 'upload' | 'template' | 'ai' | null;
 
 export default function ResumesPage() {
     const queryClient = useQueryClient();
     const [isEditorOpen, setIsEditorOpen] = useState(false);
+    const [isAIBuilderOpen, setIsAIBuilderOpen] = useState(false);
     const [editingResume, setEditingResume] = useState<any>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [createMode, setCreateMode] = useState<CreateMode>(null);
@@ -57,7 +59,16 @@ export default function ResumesPage() {
         } else if (mode === 'upload') {
             // Trigger file input click
             fileInputRef.current?.click();
+        } else if (mode === 'ai') {
+            setIsAIBuilderOpen(true);
         }
+    };
+
+    const handleAIComplete = (resumeData: any) => {
+        setIsAIBuilderOpen(false);
+        // Open editor with AI-generated data
+        setEditingResume({ content: resumeData });
+        setIsEditorOpen(true);
     };
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -303,6 +314,32 @@ export default function ResumesPage() {
                             </div>
 
                             <div className="grid gap-4">
+                                {/* AI Builder - Featured Option */}
+                                <button
+                                    onClick={() => handleCreateNew('ai')}
+                                    className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30 rounded-xl border border-purple-500/30 transition-colors text-left relative overflow-hidden"
+                                >
+                                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                                        <Sparkles className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-semibold text-white">AI Resume Builder</h3>
+                                            <span className="px-2 py-0.5 text-xs font-medium bg-purple-500/30 text-purple-300 rounded-full">NEW</span>
+                                        </div>
+                                        <p className="text-sm text-dark-400">Let AI create your professional resume in seconds</p>
+                                    </div>
+                                </button>
+
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <div className="w-full border-t border-dark-600"></div>
+                                    </div>
+                                    <div className="relative flex justify-center">
+                                        <span className="px-3 bg-dark-800 text-dark-500 text-sm">or create manually</span>
+                                    </div>
+                                </div>
+
                                 <button
                                     onClick={() => handleCreateNew('scratch')}
                                     className="flex items-center gap-4 p-4 bg-dark-700/50 hover:bg-dark-700 rounded-xl border border-dark-600 transition-colors text-left"
@@ -333,8 +370,8 @@ export default function ResumesPage() {
                                     onClick={() => handleCreateNew('upload')}
                                     className="flex items-center gap-4 p-4 bg-dark-700/50 hover:bg-dark-700 rounded-xl border border-dark-600 transition-colors text-left"
                                 >
-                                    <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                                        <Upload className="w-6 h-6 text-purple-400" />
+                                    <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                                        <Upload className="w-6 h-6 text-orange-400" />
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-white">Upload Existing Resume</h3>
@@ -364,6 +401,16 @@ export default function ResumesPage() {
                             setIsEditorOpen(false);
                             setEditingResume(null);
                         }}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* AI Resume Builder */}
+            <AnimatePresence>
+                {isAIBuilderOpen && (
+                    <AIResumeBuilder
+                        onComplete={handleAIComplete}
+                        onClose={() => setIsAIBuilderOpen(false)}
                     />
                 )}
             </AnimatePresence>
