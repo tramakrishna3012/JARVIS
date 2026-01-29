@@ -18,8 +18,12 @@ import {
     Trash2,
     X,
     LayoutTemplate,
+    Sparkles,
+    Wand2,
+    Loader2,
 } from 'lucide-react';
 import TemplateSelector from './TemplateSelector';
+import { resumesApi } from '../../lib/api';
 
 // Types for Resume Data
 export interface PersonalInfo {
@@ -117,6 +121,77 @@ export default function ResumeEditor({
         ...initialData,
     });
     const [isSaving, setIsSaving] = useState(false);
+
+    // AI states
+    const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+    const [enhancingExpId, setEnhancingExpId] = useState<string | null>(null);
+    const [isSuggestingSkills, setIsSuggestingSkills] = useState(false);
+    const [aiSuggestedSkills, setAiSuggestedSkills] = useState<string[]>([]);
+
+    // AI Handlers
+    const handleGenerateSummary = async () => {
+        setIsGeneratingSummary(true);
+        try {
+            const userInfo = {
+                name: data.personalInfo.fullName,
+                current_role: data.experiences[0]?.position || '',
+                current_company: data.experiences[0]?.company || '',
+                skills: data.skills,
+                years_experience: data.experiences.length > 0 ? data.experiences.length * 2 : 0,
+            };
+            const response = await resumesApi.aiSummary(userInfo);
+            if (response.data.success && response.data.summary) {
+                updatePersonalInfo('summary', response.data.summary);
+            }
+        } catch (error) {
+            console.error('Failed to generate summary:', error);
+        } finally {
+            setIsGeneratingSummary(false);
+        }
+    };
+
+    const handleEnhanceExperience = async (exp: Experience) => {
+        setEnhancingExpId(exp.id);
+        try {
+            const response = await resumesApi.aiEnhance(
+                exp.position,
+                exp.company,
+                exp.description
+            );
+            if (response.data.success && response.data.enhanced) {
+                const enhanced = response.data.enhanced;
+                updateExperience(exp.id, 'description', enhanced.description || exp.description);
+                if (enhanced.achievements && enhanced.achievements.length > 0) {
+                    updateExperience(exp.id, 'highlights', enhanced.achievements);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to enhance experience:', error);
+        } finally {
+            setEnhancingExpId(null);
+        }
+    };
+
+    const handleSuggestSkills = async () => {
+        setIsSuggestingSkills(true);
+        try {
+            const jobTitle = data.experiences[0]?.position || 'Software Engineer';
+            const response = await resumesApi.aiSkills(jobTitle, undefined, data.skills);
+            if (response.data.success && response.data.suggestions) {
+                const sug = response.data.suggestions;
+                const allSkills = [
+                    ...(sug.technical || []),
+                    ...(sug.soft || []),
+                    ...(sug.tools || []),
+                ];
+                setAiSuggestedSkills(allSkills);
+            }
+        } catch (error) {
+            console.error('Failed to suggest skills:', error);
+        } finally {
+            setIsSuggestingSkills(false);
+        }
+    };
 
     const updatePersonalInfo = (field: keyof PersonalInfo, value: string) => {
         setData((prev) => ({
@@ -307,6 +382,8 @@ export default function ResumeEditor({
                                 <PersonalInfoForm
                                     data={data.personalInfo}
                                     onChange={updatePersonalInfo}
+                                    onGenerateSummary={handleGenerateSummary}
+                                    isGeneratingSummary={isGeneratingSummary}
                                 />
                             )}
                             {currentStep === 2 && (
@@ -315,6 +392,8 @@ export default function ResumeEditor({
                                     onAdd={addExperience}
                                     onUpdate={updateExperience}
                                     onRemove={removeExperience}
+                                    onEnhanceExperience={handleEnhanceExperience}
+                                    enhancingExpId={enhancingExpId}
                                 />
                             )}
                             {currentStep === 3 && (
@@ -330,6 +409,9 @@ export default function ResumeEditor({
                                     skills={data.skills}
                                     onAdd={addSkill}
                                     onRemove={removeSkill}
+                                    onSuggestSkills={handleSuggestSkills}
+                                    isSuggestingSkills={isSuggestingSkills}
+                                    aiSuggestedSkills={aiSuggestedSkills}
                                 />
                             )}
                             {currentStep === 5 && (
@@ -383,9 +465,13 @@ export default function ResumeEditor({
 function PersonalInfoForm({
     data,
     onChange,
+    onGenerateSummary,
+    isGeneratingSummary,
 }: {
     data: PersonalInfo;
     onChange: (field: keyof PersonalInfo, value: string) => void;
+    onGenerateSummary?: () => void;
+    isGeneratingSummary?: boolean;
 }) {
     return (
         <div className="space-y-6">
@@ -504,7 +590,28 @@ function PersonalInfoForm({
 
             {/* Professional Summary */}
             <div className="pt-4 border-t border-dark-700">
-                <label className="block text-sm font-medium text-dark-300 mb-2">Professional Summary</label>
+                <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-dark-300">Professional Summary</label>
+                    {onGenerateSummary && (
+                        <button
+                            onClick={onGenerateSummary}
+                            disabled={isGeneratingSummary}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg transition-all disabled:opacity-50"
+                        >
+                            {isGeneratingSummary ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="w-4 h-4" />
+                                    AI Generate
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
                 <textarea
                     value={data.summary}
                     onChange={(e) => onChange('summary', e.target.value)}
@@ -522,11 +629,15 @@ function ExperienceForm({
     onAdd,
     onUpdate,
     onRemove,
+    onEnhanceExperience,
+    enhancingExpId,
 }: {
     experiences: Experience[];
     onAdd: () => void;
     onUpdate: (id: string, field: keyof Experience, value: any) => void;
     onRemove: (id: string) => void;
+    onEnhanceExperience?: (exp: Experience) => void;
+    enhancingExpId?: string | null;
 }) {
     return (
         <div className="space-y-6">
@@ -557,12 +668,33 @@ function ExperienceForm({
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-medium text-white">Experience {index + 1}</h3>
-                                <button
-                                    onClick={() => onRemove(exp.id)}
-                                    className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {onEnhanceExperience && (
+                                        <button
+                                            onClick={() => onEnhanceExperience(exp)}
+                                            disabled={enhancingExpId === exp.id}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg transition-all disabled:opacity-50"
+                                        >
+                                            {enhancingExpId === exp.id ? (
+                                                <>
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    Enhancing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Wand2 className="w-3.5 h-3.5" />
+                                                    AI Enhance
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => onRemove(exp.id)}
+                                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -744,10 +876,16 @@ function SkillsForm({
     skills,
     onAdd,
     onRemove,
+    onSuggestSkills,
+    isSuggestingSkills,
+    aiSuggestedSkills,
 }: {
     skills: string[];
     onAdd: (skill: string) => void;
     onRemove: (skill: string) => void;
+    onSuggestSkills?: () => void;
+    isSuggestingSkills?: boolean;
+    aiSuggestedSkills?: string[];
 }) {
     const [newSkill, setNewSkill] = useState('');
 
@@ -773,7 +911,28 @@ function SkillsForm({
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-6">Skills</h2>
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">Skills</h2>
+                {onSuggestSkills && (
+                    <button
+                        onClick={onSuggestSkills}
+                        disabled={isSuggestingSkills}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg transition-all disabled:opacity-50"
+                    >
+                        {isSuggestingSkills ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Suggesting...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="w-4 h-4" />
+                                AI Suggest Skills
+                            </>
+                        )}
+                    </button>
+                )}
+            </div>
 
             <div className="flex gap-2">
                 <input
@@ -810,9 +969,32 @@ function SkillsForm({
                 </div>
             )}
 
+            {/* AI Suggested Skills */}
+            {aiSuggestedSkills && aiSuggestedSkills.length > 0 && (
+                <div className="p-4 bg-gradient-to-r from-purple-600/10 to-pink-600/10 border border-purple-500/30 rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="w-4 h-4 text-purple-400" />
+                        <p className="text-sm font-medium text-purple-300">AI Suggested Skills:</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {aiSuggestedSkills.filter(s => !skills.includes(s)).map((skill) => (
+                            <button
+                                key={skill}
+                                onClick={() => onAdd(skill)}
+                                className="px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-full text-sm hover:bg-purple-500/30 hover:text-white transition-colors flex items-center gap-1"
+                            >
+                                <Plus className="w-3 h-3" />
+                                {skill}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Default suggested skills */}
             {suggestedSkills.length > 0 && (
                 <div>
-                    <p className="text-sm text-dark-400 mb-2">Suggested Skills:</p>
+                    <p className="text-sm text-dark-400 mb-2">Quick Add:</p>
                     <div className="flex flex-wrap gap-2">
                         {suggestedSkills.slice(0, 8).map((skill) => (
                             <button
