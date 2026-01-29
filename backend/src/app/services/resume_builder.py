@@ -215,20 +215,37 @@ class ResumeBuilder:
             contact_parts.append(personal['phone'])
         if personal.get('location'):
             contact_parts.append(personal['location'])
-        if personal.get('linkedin'):
-            linkedin = personal['linkedin']
-            if linkedin.startswith('http'):
-                linkedin = linkedin.split('linkedin.com/in/')[-1].rstrip('/')
-            contact_parts.append(f"LinkedIn: {linkedin}")
-        if personal.get('github'):
-            github = personal['github']
-            if github.startswith('http'):
-                github = github.split('github.com/')[-1].rstrip('/')
-            contact_parts.append(f"GitHub: {github}")
         
         if contact_parts:
             separator = '  •  ' if template_id in ['creative', 'modern'] else '  |  '
             story.append(Paragraph(separator.join(contact_parts), self.styles['ContactInfo']))
+        
+        # Social links line
+        link_parts = []
+        if personal.get('linkedin'):
+            linkedin = personal['linkedin']
+            if linkedin.startswith('http'):
+                linkedin = linkedin.split('linkedin.com/in/')[-1].rstrip('/')
+            link_parts.append(f"LinkedIn: {linkedin}")
+        if personal.get('github'):
+            github = personal['github']
+            if github.startswith('http'):
+                github = github.split('github.com/')[-1].rstrip('/')
+            link_parts.append(f"GitHub: {github}")
+        if personal.get('portfolio'):
+            portfolio = personal['portfolio']
+            if portfolio.startswith('http'):
+                portfolio = portfolio.replace('https://', '').replace('http://', '').rstrip('/')
+            link_parts.append(f"Portfolio: {portfolio}")
+        if personal.get('twitter'):
+            twitter = personal['twitter']
+            if twitter.startswith('http'):
+                twitter = twitter.split('x.com/')[-1].split('twitter.com/')[-1].rstrip('/')
+            link_parts.append(f"X: @{twitter}" if not twitter.startswith('@') else f"X: {twitter}")
+        
+        if link_parts:
+            separator = '  •  ' if template_id in ['creative', 'modern'] else '  |  '
+            story.append(Paragraph(separator.join(link_parts), self.styles['ContactInfo']))
         
         # Divider line for templates that use lines
         if template['use_lines']:
