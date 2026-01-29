@@ -210,56 +210,268 @@ async def parse_docx(content: bytes) -> dict:
 
 
 def extract_resume_data(text: str) -> dict:
-    """Extract structured resume data from raw text"""
+    """Extract structured resume data from raw text using improved parsing"""
     import re
     
     lines = [l.strip() for l in text.split('\n') if l.strip()]
+    full_text = text
     
-    # Basic extraction - name is usually the first non-empty line
-    name = lines[0] if lines else ""
+    # =====================
+    # EXTRACT PERSONAL INFO
+    # =====================
     
-    # Try to find email
-    email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', text)
+    # Name is usually the first non-email, non-phone, substantial line
+    name = ""
+    for line in lines[:5]:
+        # Skip if it looks like an email or phone or is too short
+        if '@' in line or re.search(r'\d{3}.*\d{4}', line):
+            continue
+        if len(line) > 2 and len(line) < 60:
+            name = line
+            break
+    
+    # Extract email
+    email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', full_text)
     email = email_match.group(0) if email_match else ""
     
-    # Try to find phone
-    phone_match = re.search(r'[\+]?[\d\s\-\(\)]{10,}', text)
-    phone = phone_match.group(0).strip() if phone_match else ""
+    # Extract phone (various formats)
+    phone_patterns = [
+        r'\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
+        r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
+        r'\+\d{10,12}'
+    ]
+    phone = ""
+    for pattern in phone_patterns:
+        match = re.search(pattern, full_text)
+        if match:
+            phone = match.group(0).strip()
+            break
     
-    # Extract sections based on common headers
-    sections = {
-        'summary': '',
-        'experience': [],
-        'education': [],
-        'skills': []
+    # Extract location (city, state patterns)
+    location = ""
+    location_patterns = [
+        r'([A-Z][a-z]+(?:\s[A-Z][a-z]+)?),\s*([A-Z]{2})\b',  # City, ST
+        r'([A-Z][a-z]+(?:\s[A-Z][a-z]+)?),\s*([A-Z][a-z]+)',  # City, State
+    ]
+    for pattern in location_patterns:
+        match = re.search(pattern, full_text[:500])
+        if match:
+            location = match.group(0)
+            break
+    
+    # Extract LinkedIn
+    linkedin = ""
+    linkedin_match = re.search(r'linkedin\.com/in/[\w-]+', full_text, re.IGNORECASE)
+    if linkedin_match:
+        linkedin = f"https://{linkedin_match.group(0)}"
+    
+    # =====================
+    # IDENTIFY SECTIONS
+    # =====================
+    
+    section_headers = {
+        'summary': ['summary', 'professional summary', 'profile', 'objective', 'about me', 'about'],
+        'experience': ['experience', 'work experience', 'professional experience', 'employment', 'work history', 'career history'],
+        'education': ['education', 'academic', 'qualifications', 'academic background'],
+        'skills': ['skills', 'technical skills', 'core competencies', 'competencies', 'technologies', 'tech stack', 'expertise', 'proficiencies'],
+        'projects': ['projects', 'key projects', 'personal projects'],
+        'certifications': ['certifications', 'certificates', 'licenses']
     }
     
-    # Look for skills (common patterns)
-    skills_patterns = ['skills', 'technical skills', 'competencies', 'technologies']
-    for i, line in enumerate(lines):
-        lower_line = line.lower()
-        if any(pattern in lower_line for pattern in skills_patterns):
-            # Get the next few lines as skills
-            skill_lines = lines[i+1:i+5]
-            for skill_line in skill_lines:
-                # Split by common delimiters
-                skills = re.split(r'[,;•|\t]', skill_line)
-                sections['skills'].extend([s.strip() for s in skills if s.strip() and len(s.strip()) < 50])
+    def find_section_indices(lines, headers):
+        """Find start and end indices of each section"""
+        sections = {}
+        for i, line in enumerate(lines):
+            lower_line = line.lower().strip()
+            # Remove common punctuation
+            lower_line = re.sub(r'[:\-_|]', '', lower_line).strip()
+            
+            for section_name, patterns in headers.items():
+                for pattern in patterns:
+                    if lower_line == pattern or lower_line.startswith(pattern + ' '):
+                        if section_name not in sections:
+                            sections[section_name] = {'start': i, 'end': len(lines)}
+        
+        # Calculate end indices
+        sorted_sections = sorted(sections.items(), key=lambda x: x[1]['start'])
+        for i, (name, indices) in enumerate(sorted_sections):
+            if i + 1 < len(sorted_sections):
+                indices['end'] = sorted_sections[i + 1][1]['start']
+        
+        return {name: (indices['start'], indices['end']) for name, indices in sections.items()}
+    
+    section_indices = find_section_indices(lines, section_headers)
+    
+    # =====================
+    # EXTRACT SUMMARY
+    # =====================
+    
+    summary = ""
+    if 'summary' in section_indices:
+        start, end = section_indices['summary']
+        summary_lines = lines[start+1:min(start+6, end)]
+        summary = ' '.join(summary_lines)
+    
+    # =====================
+    # EXTRACT EXPERIENCE
+    # =====================
+    
+    experiences = []
+    if 'experience' in section_indices:
+        start, end = section_indices['experience']
+        exp_lines = lines[start+1:end]
+        
+        current_exp = None
+        date_pattern = r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}|(?:19|20)\d{2})\s*[-–—to]+\s*((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{4}|(?:19|20)\d{2}|Present|Current)'
+        
+        for line in exp_lines:
+            # Check if this line contains dates (likely a job entry)
+            date_match = re.search(date_pattern, line, re.IGNORECASE)
+            
+            # Check if this looks like a company/title line
+            is_new_entry = date_match or (
+                len(line) > 3 and 
+                not line.startswith(('•', '-', '●', '*', '○')) and
+                any(c.isupper() for c in line[:3])
+            )
+            
+            if is_new_entry and date_match:
+                # Save previous experience
+                if current_exp:
+                    experiences.append(current_exp)
+                
+                # Parse dates
+                start_date = date_match.group(1) if date_match else ""
+                end_date = date_match.group(2) if date_match else ""
+                is_current = 'present' in end_date.lower() or 'current' in end_date.lower() if end_date else False
+                
+                # Extract title and company from the line
+                line_before_date = line[:date_match.start()].strip() if date_match else line
+                parts = re.split(r'\s*[-–—|@at]\s*', line_before_date, maxsplit=1)
+                
+                position = parts[0].strip() if parts else ""
+                company = parts[1].strip() if len(parts) > 1 else ""
+                
+                current_exp = {
+                    'position': position,
+                    'company': company,
+                    'startDate': start_date,
+                    'endDate': "" if is_current else end_date,
+                    'current': is_current,
+                    'description': '',
+                    'highlights': []
+                }
+            elif current_exp and line.startswith(('•', '-', '●', '*', '○', '▪')):
+                # This is a bullet point - add to highlights
+                highlight = re.sub(r'^[•\-●*○▪]\s*', '', line).strip()
+                if highlight:
+                    current_exp['highlights'].append(highlight)
+            elif current_exp and line and not any(h in line.lower() for headers_list in section_headers.values() for h in headers_list):
+                # Add to description if not a section header
+                if len(current_exp['highlights']) == 0:
+                    current_exp['description'] += ' ' + line
+        
+        # Add last experience
+        if current_exp:
+            current_exp['description'] = current_exp['description'].strip()
+            experiences.append(current_exp)
+    
+    # =====================
+    # EXTRACT EDUCATION
+    # =====================
+    
+    education = []
+    if 'education' in section_indices:
+        start, end = section_indices['education']
+        edu_lines = lines[start+1:end]
+        
+        degree_patterns = [
+            r"(Bachelor'?s?|Master'?s?|Ph\.?D\.?|B\.?S\.?|M\.?S\.?|B\.?A\.?|M\.?A\.?|B\.?E\.?|M\.?E\.?|B\.?Tech|M\.?Tech|MBA|Associate'?s?)",
+        ]
+        
+        current_edu = None
+        
+        for line in edu_lines:
+            # Check for degree patterns
+            has_degree = any(re.search(p, line, re.IGNORECASE) for p in degree_patterns)
+            
+            # Check for year pattern
+            year_match = re.search(r'(19|20)\d{2}', line)
+            
+            if has_degree or (year_match and not current_edu):
+                if current_edu:
+                    education.append(current_edu)
+                
+                # Try to parse institution and degree
+                degree_match = re.search(degree_patterns[0], line, re.IGNORECASE)
+                degree = degree_match.group(0) if degree_match else ""
+                
+                # Extract years
+                years = re.findall(r'(19|20)\d{2}', line)
+                start_year = years[0] if years else ""
+                end_year = years[1] if len(years) > 1 else years[0] if years else ""
+                
+                # Remove degree and dates to get institution
+                institution = line
+                if degree_match:
+                    institution = institution.replace(degree_match.group(0), '')
+                for year in years:
+                    institution = institution.replace(year, '')
+                institution = re.sub(r'[-–—,|\s]+', ' ', institution).strip()
+                
+                current_edu = {
+                    'institution': institution[:100],
+                    'degree': degree,
+                    'field': '',
+                    'startDate': start_year,
+                    'endDate': end_year
+                }
+            elif current_edu and line and not line.startswith(('•', '-')):
+                # Might be field of study
+                if not current_edu['field']:
+                    current_edu['field'] = line[:100]
+        
+        if current_edu:
+            education.append(current_edu)
+    
+    # =====================
+    # EXTRACT SKILLS
+    # =====================
+    
+    skills = []
+    if 'skills' in section_indices:
+        start, end = section_indices['skills']
+        skill_lines = lines[start+1:min(end, start+15)]
+        
+        for line in skill_lines:
+            # Split by common delimiters
+            line_skills = re.split(r'[,;•|●○▪\t]', line)
+            for skill in line_skills:
+                skill = skill.strip()
+                # Filter out non-skills
+                if skill and len(skill) > 1 and len(skill) < 40:
+                    if not any(h in skill.lower() for headers_list in section_headers.values() for h in headers_list):
+                        skills.append(skill)
+    
+    # Deduplicate and limit skills
+    skills = list(dict.fromkeys(skills))[:25]
     
     return {
         "personalInfo": {
             "fullName": name,
             "email": email,
             "phone": phone,
-            "location": "",
-            "summary": ""
+            "location": location,
+            "linkedin": linkedin,
+            "summary": summary[:500] if summary else ""
         },
-        "summary": "",
-        "experiences": [],
-        "education": [],
-        "skills": sections['skills'][:20],  # Limit to 20 skills
-        "raw_text": text[:5000]  # Keep first 5000 chars for reference
+        "summary": summary[:1000] if summary else "",
+        "experiences": experiences[:10],
+        "education": education[:5],
+        "skills": skills,
+        "raw_text": full_text[:8000]
     }
+
 
 
 @router.put("/{resume_id}", response_model=ResumeResponse)
