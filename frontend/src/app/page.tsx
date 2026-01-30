@@ -17,7 +17,7 @@ export default function HomePage() {
             <header className="container mx-auto px-6 py-8">
                 <nav className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <Image src="/jarvis.svg" alt="JARVIS" width={64} height={64} className="object-contain" />
+                        <Image src="/JARVIS.jpg" alt="JARVIS" width={64} height={64} className="object-contain rounded-full" />
                         <span className="text-xl font-bold text-white">JARVIS</span>
                     </div>
                     <div className="flex items-center gap-4">

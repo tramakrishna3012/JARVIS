@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <Link href="/" className="inline-flex items-center gap-3">
-                        <Image src="/jarvis.svg" alt="JARVIS" width={56} height={56} />
+                        <Image src="/JARVIS.jpg" alt="JARVIS" width={56} height={56} className="rounded-full" />
                         <span className="text-2xl font-bold text-white">JARVIS</span>
                     </Link>
                 </div>

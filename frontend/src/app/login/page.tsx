@@ -51,7 +51,7 @@ export default function LoginPage() {
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <Link href="/" className="flex items-center justify-center gap-3 mb-8 hover:opacity-80 transition-opacity">
-                    <Image src="/jarvis.svg" alt="JARVIS" width={72} height={72} className="object-contain" />
+                    <Image src="/JARVIS.jpg" alt="JARVIS" width={72} height={72} className="object-contain rounded-full" />
                     <span className="text-xl font-bold text-white">JARVIS</span>
                 </Link>
 

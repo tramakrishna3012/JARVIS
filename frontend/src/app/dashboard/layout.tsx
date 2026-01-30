@@ -44,7 +44,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <div className="flex flex-col h-full">
                             {/* Logo */}
                             <Link href="/" className="flex items-center gap-3 px-6 py-4 border-b border-dark-200 dark:border-dark-800 hover:bg-dark-50 dark:hover:bg-dark-800/50 transition-colors">
-                                <Image src="/jarvis.svg" alt="JARVIS" width={56} height={56} className="object-contain" />
+                                <Image src="/JARVIS.jpg" alt="JARVIS" width={56} height={56} className="object-contain rounded-full" />
                                 <span className="text-lg font-bold text-dark-900 dark:text-white">JARVIS</span>
                             </Link>
 

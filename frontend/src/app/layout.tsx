@@ -7,8 +7,8 @@ export const metadata: Metadata = {
     description: 'AI-powered automated job application and referral platform',
     keywords: ['job search', 'resume builder', 'job application', 'AI', 'automation'],
     icons: {
-        icon: '/jarvis.svg',
-        apple: '/jarvis.svg',
+        icon: '/JARVIS.jpg',
+        apple: '/JARVIS.jpg',
     },
 };
 
