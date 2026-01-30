@@ -360,24 +360,34 @@ async def upload_resume(
 async def parse_pdf(content: bytes) -> dict:
     """Parse PDF content and extract text"""
     try:
-        import fitz  # PyMuPDF
+        import PyPDF2
+        import io
         
-        doc = fitz.open(stream=content, filetype="pdf")
+        reader = PyPDF2.PdfReader(io.BytesIO(content))
         text = ""
-        for page in doc:
-            text += page.get_text()
-        doc.close()
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
         
         return extract_resume_data(text)
     except ImportError:
-        # Fallback if PyMuPDF not installed
+        # Fallback if PyPDF2 not installed
         return {
             "personalInfo": {"fullName": ""},
             "summary": "",
             "experiences": [],
             "education": [],
             "skills": [],
-            "raw_text": "PDF parsing requires PyMuPDF. Please install it with: pip install pymupdf"
+            "raw_text": "PDF parsing requires PyPDF2."
+        }
+    except Exception as e:
+        print(f"PDF parse error: {e}")
+        return {
+            "personalInfo": {"fullName": ""},
+            "summary": "",
+            "experiences": [],
+            "education": [],
+            "skills": [],
+            "raw_text": ""
         }
 
 

@@ -91,7 +91,7 @@ class JobDiscoveryService:
             if response.status_code != 200:
                 return jobs
             
-            soup = BeautifulSoup(response.text, 'lxml')
+            soup = BeautifulSoup(response.text, 'html.parser')
             
             # Parse job cards (structure may change)
             job_cards = soup.select('.jobTuple, .cust-job-tuple')
