@@ -1758,7 +1758,7 @@ function ResumePreview({ data }: { data: ResumeData }) {
 
             {/* Skills */}
             {data.skills.length > 0 && (
-                <div>
+                <div className="mb-6">
                     <h2 className="text-lg font-bold mb-3" style={{ color: data.themeColor }}>
                         Skills
                     </h2>
@@ -1771,6 +1771,115 @@ function ResumePreview({ data }: { data: ResumeData }) {
                             >
                                 {skill}
                             </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Projects */}
+            {data.projects && data.projects.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold mb-3" style={{ color: data.themeColor }}>
+                        Projects
+                    </h2>
+                    <div className="space-y-3">
+                        {data.projects.map((project) => (
+                            <div key={project.id}>
+                                <div className="flex justify-between items-start">
+                                    <h3 className="font-semibold text-gray-900">{project.name || 'Project Name'}</h3>
+                                    <div className="flex gap-2 text-xs">
+                                        {project.url && (
+                                            <span className="text-blue-600">Live</span>
+                                        )}
+                                        {project.github && (
+                                            <span className="text-gray-600">GitHub</span>
+                                        )}
+                                    </div>
+                                </div>
+                                {project.description && (
+                                    <p className="text-sm text-gray-700 mt-1">{project.description}</p>
+                                )}
+                                {project.technologies && project.technologies.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                        {project.technologies.map((tech) => (
+                                            <span
+                                                key={tech}
+                                                className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded"
+                                            >
+                                                {tech}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Certifications */}
+            {data.certifications && data.certifications.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold mb-3" style={{ color: data.themeColor }}>
+                        Certifications
+                    </h2>
+                    <div className="space-y-2">
+                        {data.certifications.map((cert) => (
+                            <div key={cert.id} className="flex justify-between items-start">
+                                <div>
+                                    <h3 className="font-semibold text-gray-900">{cert.name || 'Certification Name'}</h3>
+                                    <p className="text-sm text-gray-600">{cert.issuer || 'Issuing Organization'}</p>
+                                    {cert.credentialId && (
+                                        <p className="text-xs text-gray-500">Credential ID: {cert.credentialId}</p>
+                                    )}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                    {formatDate(cert.date)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Achievements */}
+            {data.achievements && data.achievements.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold mb-3" style={{ color: data.themeColor }}>
+                        Achievements & Awards
+                    </h2>
+                    <div className="space-y-2">
+                        {data.achievements.map((achievement) => (
+                            <div key={achievement.id} className="flex justify-between items-start">
+                                <div>
+                                    <h3 className="font-semibold text-gray-900">{achievement.title || 'Achievement'}</h3>
+                                    {achievement.description && (
+                                        <p className="text-sm text-gray-700">{achievement.description}</p>
+                                    )}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                    {formatDate(achievement.date)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Languages */}
+            {data.languages && data.languages.length > 0 && (
+                <div>
+                    <h2 className="text-lg font-bold mb-3" style={{ color: data.themeColor }}>
+                        Languages
+                    </h2>
+                    <div className="flex flex-wrap gap-3">
+                        {data.languages.map((lang) => (
+                            <div key={lang.id} className="text-sm">
+                                <span className="font-medium text-gray-900">{lang.language}</span>
+                                <span className="text-gray-500 ml-1">
+                                    ({lang.proficiency.charAt(0).toUpperCase() + lang.proficiency.slice(1)})
+                                </span>
+                            </div>
                         ))}
                     </div>
                 </div>

@@ -298,21 +298,31 @@ class ResumeBuilder:
                 for highlight in highlights[:max_highlights]:
                     story.append(Paragraph(f"• {highlight}", self.styles['BulletPoint']))
         
-        # Projects (for tech template)
+        # Projects
         projects = resume_content.get('projects', [])
-        if projects and template_id in ['tech', 'creative']:
+        if projects:
             title = self._format_section_title('Projects', template['section_style'])
             story.append(Paragraph(title, self.styles['SectionHeader']))
             if template['use_lines']:
                 story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e5e7eb'), spaceAfter=6))
             
-            for proj in projects[:3]:
+            for proj in projects:
                 name = proj.get('name', '')
                 desc = proj.get('description', '')
-                story.append(Paragraph(f"<b>{name}</b>", self.styles['JobTitle']))
+                url = proj.get('url', '')
+                
+                title_text = f"<b>{name}</b>"
+                if url:
+                    title_text += f" | <a href='{url}' color='blue'>{url}</a>"
+                    
+                story.append(Paragraph(title_text, self.styles['JobTitle']))
                 if desc:
                     story.append(Paragraph(desc, self.styles['BulletPoint']))
-        
+                
+                if proj.get('technologies'):
+                    tech_str = ", ".join(proj['technologies'])
+                    story.append(Paragraph(f"<i>Technologies: {tech_str}</i>", self.styles['BulletPoint']))
+
         # Education
         education = resume_content.get('education', [])
         if education:
@@ -321,7 +331,7 @@ class ResumeBuilder:
             if template['use_lines']:
                 story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e5e7eb'), spaceAfter=6))
             
-            for edu in education[:3]:
+            for edu in education:
                 institution = edu.get('institution', '')
                 degree = edu.get('degree', '')
                 field = edu.get('field', '')
@@ -342,7 +352,63 @@ class ResumeBuilder:
                 end = self._format_date(edu.get('endDate', ''))
                 if start or end:
                     story.append(Paragraph(f"{start} – {end}", self.styles['Company']))
-        
+
+        # Certifications
+        certifications = resume_content.get('certifications', [])
+        if certifications:
+            title = self._format_section_title('Certifications', template['section_style'])
+            story.append(Paragraph(title, self.styles['SectionHeader']))
+            if template['use_lines']:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e5e7eb'), spaceAfter=6))
+            
+            for cert in certifications:
+                name = cert.get('name', '')
+                issuer = cert.get('issuer', '')
+                date = self._format_date(cert.get('date', ''))
+                
+                cert_text = f"<b>{name}</b>"
+                if issuer:
+                    cert_text += f" – {issuer}"
+                if date:
+                    cert_text += f" ({date})"
+                    
+                story.append(Paragraph(cert_text, self.styles['BulletPoint']))
+
+        # Achievements
+        achievements = resume_content.get('achievements', [])
+        if achievements:
+            title = self._format_section_title('Key Achievements', template['section_style'])
+            story.append(Paragraph(title, self.styles['SectionHeader']))
+            if template['use_lines']:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e5e7eb'), spaceAfter=6))
+            
+            for ach in achievements:
+                title_text = ach.get('title', '')
+                desc = ach.get('description', '')
+                if title_text:
+                    if desc:
+                        story.append(Paragraph(f"<b>{title_text}</b>: {desc}", self.styles['BulletPoint']))
+                    else:
+                        story.append(Paragraph(f"• {title_text}", self.styles['BulletPoint']))
+
+        # Languages
+        languages = resume_content.get('languages', [])
+        if languages:
+            title = self._format_section_title('Languages', template['section_style'])
+            story.append(Paragraph(title, self.styles['SectionHeader']))
+            if template['use_lines']:
+                story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e5e7eb'), spaceAfter=6))
+            
+            lang_items = []
+            for lang in languages:
+                l_name = lang.get('language', '')
+                l_prof = lang.get('proficiency', '')
+                if l_name:
+                    lang_items.append(f"{l_name} ({l_prof})" if l_prof else l_name)
+            
+            if lang_items:
+                story.append(Paragraph(", ".join(lang_items), self.styles['Normal']))
+
         # Skills
         skills = resume_content.get('skills', [])
         if skills:
@@ -351,7 +417,7 @@ class ResumeBuilder:
             if template['use_lines']:
                 story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#e5e7eb'), spaceAfter=6))
             
-            max_skills = 15 if template['compact'] else 20
+            max_skills = 30
             skills_text = '  •  '.join(skills[:max_skills])
             story.append(Paragraph(skills_text, self.styles['Skills']))
         
@@ -472,6 +538,40 @@ class ResumeBuilder:
                     for run in bullet.runs:
                         run.font.size = Pt(template['body_size'])
         
+        # Projects
+        projects = resume_content.get('projects', [])
+        if projects:
+            title = self._format_section_title('Projects', template['section_style'])
+            heading = document.add_heading(title, level=1)
+            for run in heading.runs:
+                run.font.color.rgb = theme_rgb
+                run.font.size = Pt(template['section_size'])
+            
+            for proj in projects:
+                name = proj.get('name', '')
+                desc = proj.get('description', '')
+                url = proj.get('url', '')
+                
+                proj_para = document.add_paragraph()
+                run = proj_para.add_run(name)
+                run.bold = True
+                run.font.size = Pt(template['body_size'] + 1)
+                
+                if url:
+                    proj_para.add_run(f" | {url}")
+                
+                if desc:
+                    bullet = document.add_paragraph(desc, style='List Bullet')
+                    for run in bullet.runs:
+                        run.font.size = Pt(template['body_size'])
+                
+                if proj.get('technologies'):
+                    tech_str = ", ".join(proj['technologies'])
+                    bullet = document.add_paragraph(f"Technologies: {tech_str}", style='List Bullet')
+                    for run in bullet.runs:
+                        run.font.italic = True
+                        run.font.size = Pt(template['body_size'])
+
         # Education
         education = resume_content.get('education', [])
         if education:
@@ -481,7 +581,7 @@ class ResumeBuilder:
                 run.font.color.rgb = theme_rgb
                 run.font.size = Pt(template['section_size'])
             
-            for edu in education[:3]:
+            for edu in education:
                 institution = edu.get('institution', '')
                 degree = edu.get('degree', '')
                 field = edu.get('field', '')
@@ -494,7 +594,88 @@ class ResumeBuilder:
                     edu_para.add_run(f" in {field}")
                 if institution:
                     edu_para.add_run(f" – {institution}")
-        
+                
+                # Date range
+                start = self._format_date(edu.get('startDate', ''))
+                end = self._format_date(edu.get('endDate', ''))
+                if start or end:
+                    date_para = document.add_paragraph(f"{start} – {end}")
+                    for run in date_para.runs:
+                        run.font.size = Pt(9)
+                        run.font.color.rgb = RGBColor(100, 100, 100)
+
+        # Certifications
+        certifications = resume_content.get('certifications', [])
+        if certifications:
+            title = self._format_section_title('Certifications', template['section_style'])
+            heading = document.add_heading(title, level=1)
+            for run in heading.runs:
+                run.font.color.rgb = theme_rgb
+                run.font.size = Pt(template['section_size'])
+                
+            for cert in certifications:
+                name = cert.get('name', '')
+                issuer = cert.get('issuer', '')
+                date = self._format_date(cert.get('date', ''))
+                
+                cert_para = document.add_paragraph(style='List Bullet')
+                run = cert_para.add_run(name)
+                run.bold = True
+                
+                if issuer:
+                    cert_para.add_run(f" – {issuer}")
+                if date:
+                    cert_para.add_run(f" ({date})")
+                
+                for run in cert_para.runs:
+                    run.font.size = Pt(template['body_size'])
+
+        # Achievements
+        achievements = resume_content.get('achievements', [])
+        if achievements:
+            title = self._format_section_title('Key Achievements', template['section_style'])
+            heading = document.add_heading(title, level=1)
+            for run in heading.runs:
+                run.font.color.rgb = theme_rgb
+                run.font.size = Pt(template['section_size'])
+            
+            for ach in achievements:
+                title_text = ach.get('title', '')
+                desc = ach.get('description', '')
+                
+                ach_para = document.add_paragraph(style='List Bullet')
+                if title_text:
+                    run = ach_para.add_run(title_text)
+                    run.bold = True
+                    if desc:
+                        ach_para.add_run(f": {desc}")
+                elif desc:
+                    ach_para.add_run(desc)
+                
+                for run in ach_para.runs:
+                    run.font.size = Pt(template['body_size'])
+
+        # Languages
+        languages = resume_content.get('languages', [])
+        if languages:
+            title = self._format_section_title('Languages', template['section_style'])
+            heading = document.add_heading(title, level=1)
+            for run in heading.runs:
+                run.font.color.rgb = theme_rgb
+                run.font.size = Pt(template['section_size'])
+            
+            lang_items = []
+            for lang in languages:
+                l_name = lang.get('language', '')
+                l_prof = lang.get('proficiency', '')
+                if l_name:
+                    lang_items.append(f"{l_name} ({l_prof})" if l_prof else l_name)
+            
+            if lang_items:
+                lang_para = document.add_paragraph(", ".join(lang_items))
+                for run in lang_para.runs:
+                    run.font.size = Pt(template['body_size'])
+
         # Skills
         skills = resume_content.get('skills', [])
         if skills:
@@ -504,7 +685,7 @@ class ResumeBuilder:
                 run.font.color.rgb = theme_rgb
                 run.font.size = Pt(template['section_size'])
             
-            max_skills = 15 if template['compact'] else 20
+            max_skills = 30
             skills_para = document.add_paragraph('  •  '.join(skills[:max_skills]))
             for run in skills_para.runs:
                 run.font.size = Pt(template['body_size'])

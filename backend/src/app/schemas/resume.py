@@ -16,6 +16,8 @@ class ResumeContent(BaseModel):
     skills: List[str] = []
     projects: List[Dict[str, Any]] = []
     certifications: List[Dict[str, Any]] = []
+    achievements: List[Dict[str, Any]] = []
+    languages: List[Dict[str, Any]] = []
 
 
 class ResumeCreate(BaseModel):
