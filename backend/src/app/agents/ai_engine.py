@@ -593,10 +593,13 @@ Return JSON format:
             
             return json.loads(content)
         except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
             print(f"Chat error: {e}")
+            print(f"Traceback: {error_trace}")
             return {
-                "response": "I'm having trouble processing that. Could you try rephrasing?",
-                "suggestions": [],
+                "response": f"I encountered an error while processing your request: {str(e)}. Please check the server logs or API key configuration.",
+                "suggestions": ["Check API Key", "Retry later"],
                 "action": "none"
             }
     
