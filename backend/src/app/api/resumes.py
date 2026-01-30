@@ -273,9 +273,7 @@ async def ai_suggest_projects(
 
 
 @router.get("/ai/models")
-async def list_models(
-    current_user: User = Depends(get_current_user)
-):
+async def list_models():
     """Debug endpoint to see available Gemini models"""
     from app.core.config import settings
     import google.generativeai as genai
