@@ -15,11 +15,30 @@ class AIEngine:
     
     def __init__(self):
         # Configure Gemini
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
+        self.api_key = settings.GEMINI_API_KEY
+        self.model = None
+        
+        if self.api_key:
+            try:
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
+            except Exception as e:
+                print(f"Failed to initialize Gemini: {e}")
+        else:
+            print("Warning: GEMINI_API_KEY is not set. AI features will fail.")
     
     async def _generate_content(self, prompt: str) -> str:
         """Helper to generate content asynchronously"""
+        if not self.model:
+            if not self.api_key:
+                raise ValueError("GEMINI_API_KEY is not set in environment variables.")
+            try:
+                # Try lazy init
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
+            except Exception as e:
+                raise ValueError(f"Gemini initialization failed: {str(e)}")
+
         try:
             response = await self.model.generate_content_async(prompt)
             return response.text
