@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     
     # Google Gemini
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash-001"
+    GEMINI_MODEL: str = "gemini-1.5-pro"
     
     # Email (SMTP)
     SMTP_HOST: str = "smtp.gmail.com"
