@@ -201,16 +201,29 @@ async def ai_resume_chat(
     """AI Chatbot for resume assistance"""
     from app.agents.ai_engine import ai_engine
     
-    message = request.get("message", "")
-    resume_context = request.get("resumeContext", {})
-    chat_history = request.get("chatHistory", [])
-    
-    if not message:
-        raise HTTPException(status_code=400, detail="Message is required")
-    
-    response = await ai_engine.resume_chat(message, resume_context, chat_history)
-    
-    return {"success": True, **response}
+    try:
+        message = request.get("message", "")
+        resume_context = request.get("resumeContext", {})
+        chat_history = request.get("chatHistory", [])
+        
+        if not message:
+            raise HTTPException(status_code=400, detail="Message is required")
+        
+        response = await ai_engine.resume_chat(message, resume_context, chat_history)
+        
+        return {"success": True, **response}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"AI chat error: {e}")
+        # Return a graceful fallback response instead of 500
+        return {
+            "success": True,
+            "response": "I'm having trouble processing your request right now. Please try again.",
+            "suggestions": [],
+            "action": "none"
+        }
+
 
 
 @router.post("/ai/ats-optimize")

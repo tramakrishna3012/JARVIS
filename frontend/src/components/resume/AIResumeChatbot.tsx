@@ -113,13 +113,27 @@ export default function AIResumeChatbot({ resumeData, onApplySuggestion }: AIRes
                     timestamp: new Date(),
                 };
                 setMessages((prev) => [...prev, assistantMessage]);
+            } else {
+                throw new Error('AI response unsuccessful');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Chat error:', error);
+
+            let errorContent = "I'm having trouble connecting right now. Please try again in a moment.";
+
+            // Check if it's an authentication error
+            if (error?.response?.status === 401) {
+                errorContent = "Your session may have expired. Please refresh the page or log in again.";
+            } else if (error?.response?.status === 500) {
+                errorContent = "The AI service is temporarily unavailable. Please try again later.";
+            } else if (error?.message) {
+                errorContent = `Error: ${error.message}`;
+            }
+
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: "I'm having trouble connecting right now. Please try again in a moment.",
+                content: errorContent,
                 timestamp: new Date(),
             };
             setMessages((prev) => [...prev, errorMessage]);
@@ -203,8 +217,8 @@ export default function AIResumeChatbot({ resumeData, onApplySuggestion }: AIRes
                                 >
                                     <div
                                         className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.role === 'user'
-                                                ? 'bg-primary-600'
-                                                : 'bg-gradient-to-r from-purple-600 to-pink-600'
+                                            ? 'bg-primary-600'
+                                            : 'bg-gradient-to-r from-purple-600 to-pink-600'
                                             }`}
                                     >
                                         {message.role === 'user' ? (
@@ -215,8 +229,8 @@ export default function AIResumeChatbot({ resumeData, onApplySuggestion }: AIRes
                                     </div>
                                     <div
                                         className={`max-w-[80%] rounded-2xl px-4 py-2 ${message.role === 'user'
-                                                ? 'bg-primary-600 text-white rounded-br-sm'
-                                                : 'bg-dark-700 text-dark-100 rounded-bl-sm'
+                                            ? 'bg-primary-600 text-white rounded-br-sm'
+                                            : 'bg-dark-700 text-dark-100 rounded-bl-sm'
                                             }`}
                                     >
                                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
