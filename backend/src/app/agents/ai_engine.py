@@ -49,25 +49,79 @@ class AIEngine:
 
     async def _generate_json(self, prompt: str) -> Dict[str, Any]:
         """Helper to generate and parse JSON content"""
-        try:
-            # Force JSON structure in prompt if not present
-            if "Return JSON" not in prompt:
-                prompt += "\n\nReturn user valid JSON."
+        # Force JSON structure in prompt if not present
+        if "Return JSON" not in prompt:
+            prompt += "\n\nReturn user valid JSON."
 
-            content = await self._generate_content(prompt)
-            content = content.strip()
-            
-            # Clean up markdown code blocks
-            if content.startswith("```"):
-                lines = content.split('\n')
-                # Remove first line (```json or ```) and last line (```)
-                if len(lines) >= 2:
-                    content = '\n'.join(lines[1:-1])
-            
+        content = await self._generate_content(prompt)
+        content = content.strip()
+        
+        # Clean up markdown code blocks
+        if content.startswith("```"):
+            lines = content.split('\n')
+            # Remove first line (```json or ```) and last line (```)
+            if len(lines) >= 2:
+                content = '\n'.join(lines[1:-1])
+        
+        try:
             return json.loads(content)
+        except json.JSONDecodeError:
+            print(f"Failed to parse JSON: {content[:100]}...")
+            raise ValueError("Failed to parse AI response as JSON")
+
+    # ... (other methods)
+
+    async def resume_chat(
+        self,
+        message: str,
+        resume_context: Dict[str, Any],
+        chat_history: List[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
+        """AI Chatbot for resume assistance - conversational interface"""
+        
+        history_text = ""
+        if chat_history:
+            for msg in chat_history[-5:]:  # Last 5 messages for context
+                history_text += f"{msg['role'].upper()}: {msg['content']}\n"
+        
+        prompt = f"""You are JARVIS, an AI resume assistant. Help the user improve their resume.
+
+CURRENT RESUME SUMMARY:
+- Name: {resume_context.get('name', 'Not set')}
+- Current Role: {resume_context.get('current_role', 'Not set')}
+- Years Experience: {resume_context.get('years_experience', 'Not set')}
+- Skills: {', '.join(resume_context.get('skills', [])[:10])}
+- Target Role: {resume_context.get('target_role', 'Not specified')}
+
+CHAT HISTORY:
+{history_text}
+
+USER MESSAGE: {message}
+
+Respond helpfully and concisely. If suggesting improvements, be specific.
+You can:
+1. Suggest ways to improve their resume
+2. Help write better descriptions
+3. Recommend skills to add
+4. Provide career advice
+5. Help with ATS optimization
+
+Return JSON format:
+{{
+    "response": "Your helpful response",
+    "suggestions": ["optional list of quick actions"],
+    "action": "none|improve_summary|add_skill|improve_experience|suggest_certifications"
+}}"""
+
+        try:
+            return await self._generate_json(prompt)
         except Exception as e:
-            print(f"Gemini JSON error: {e}")
-            return {}
+            error_msg = str(e)
+            return {
+                "response": f"I encountered an error: {error_msg}. Please check configuration.",
+                "suggestions": ["Retry"],
+                "action": "none"
+            }
 
     async def calculate_job_score(
         self, 

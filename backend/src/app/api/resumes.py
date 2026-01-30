@@ -223,8 +223,8 @@ async def ai_resume_chat(
         # Return a graceful fallback response instead of 500
         return {
             "success": True,
-            "response": "I'm having trouble processing your request right now. Please try again.",
-            "suggestions": [],
+            "response": f"I'm having trouble processing your request. Error details: {str(e)}",
+            "suggestions": ["Retry", "Check Configuration"],
             "action": "none"
         }
 
