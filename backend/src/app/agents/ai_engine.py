@@ -43,6 +43,24 @@ class AIEngine:
             response = await self.model.generate_content_async(prompt)
             return response.text
         except Exception as e:
+            error_str = str(e).lower()
+            # Handle 404/NotFound (Invalid model) by falling back to standard model
+            if "404" in error_str or "not found" in error_str:
+                print(f"Model error: {e}. Falling back to 'gemini-pro'...")
+                try:
+                    # Initialize fallback model
+                    start_fallback = genai.GenerativeModel("gemini-pro")
+                    response = await start_fallback.generate_content_async(prompt)
+                    
+                    # If successful, update the instance model to use fallback permanently
+                    self.model = start_fallback
+                    print("Fallback successful. Switched to gemini-pro.")
+                    return response.text
+                except Exception as fallback_error:
+                    print(f"Fallback model also failed: {fallback_error}")
+                    # Raise the original error as it's likely the root cause
+                    pass
+            
             print(f"Gemini generation error: {e}")
             traceback.print_exc()
             raise e
