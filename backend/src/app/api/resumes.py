@@ -182,15 +182,19 @@ async def ai_suggest_skills(
     current_user: User = Depends(get_current_user)
 ):
     """Get AI-suggested skills for a job role"""
-    from app.agents.ai_engine import ai_engine
-    
-    job_title = request.get("jobTitle", "Software Engineer")
-    industry = request.get("industry")
-    existing_skills = request.get("existingSkills", [])
-    
-    suggestions = await ai_engine.suggest_skills(job_title, industry, existing_skills)
-    
-    return {"success": True, "suggestions": suggestions}
+    try:
+        from app.agents.ai_engine import ai_engine
+        
+        job_title = request.get("jobTitle", "Software Engineer")
+        industry = request.get("industry")
+        existing_skills = request.get("existingSkills", [])
+        
+        suggestions = await ai_engine.suggest_skills(job_title, industry, existing_skills)
+        
+        return {"success": True, "suggestions": suggestions}
+    except Exception as e:
+        print(f"AI suggest skills error: {e}")
+        return {"success": False, "suggestions": [], "error": str(e)}
 
 
 @router.post("/ai/chat")
@@ -199,9 +203,9 @@ async def ai_resume_chat(
     current_user: User = Depends(get_current_user)
 ):
     """AI Chatbot for resume assistance"""
-    from app.agents.ai_engine import ai_engine
-    
     try:
+        from app.agents.ai_engine import ai_engine
+        
         message = request.get("message", "")
         resume_context = request.get("resumeContext", {})
         chat_history = request.get("chatHistory", [])
@@ -232,14 +236,18 @@ async def ai_ats_optimize(
     current_user: User = Depends(get_current_user)
 ):
     """Get ATS optimization suggestions"""
-    from app.agents.ai_engine import ai_engine
-    
-    resume_data = request.get("resumeData", {})
-    job_description = request.get("jobDescription")
-    
-    result = await ai_engine.ats_optimize(resume_data, job_description)
-    
-    return {"success": True, **result}
+    try:
+        from app.agents.ai_engine import ai_engine
+        
+        resume_data = request.get("resumeData", {})
+        job_description = request.get("jobDescription")
+        
+        result = await ai_engine.ats_optimize(resume_data, job_description)
+        
+        return {"success": True, **result}
+    except Exception as e:
+        print(f"AI ATS error: {e}")
+        return {"success": False, "error": str(e)}
 
 
 @router.post("/ai/projects")
@@ -248,15 +256,19 @@ async def ai_suggest_projects(
     current_user: User = Depends(get_current_user)
 ):
     """Get AI-generated project suggestions"""
-    from app.agents.ai_engine import ai_engine
-    
-    skills = request.get("skills", [])
-    experience_level = request.get("experienceLevel", "mid")
-    industry = request.get("industry")
-    
-    projects = await ai_engine.generate_projects(skills, experience_level, industry)
-    
-    return {"success": True, "projects": projects}
+    try:
+        from app.agents.ai_engine import ai_engine
+        
+        skills = request.get("skills", [])
+        experience_level = request.get("experienceLevel", "mid")
+        industry = request.get("industry")
+        
+        projects = await ai_engine.generate_projects(skills, experience_level, industry)
+        
+        return {"success": True, "projects": projects}
+    except Exception as e:
+        print(f"AI projects error: {e}")
+        return {"success": False, "projects": [], "error": str(e)}
 
 
 @router.post("/ai/certifications")
