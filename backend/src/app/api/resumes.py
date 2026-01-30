@@ -271,6 +271,39 @@ async def ai_suggest_projects(
         return {"success": False, "projects": [], "error": str(e)}
 
 
+
+@router.get("/ai/models")
+async def list_models(
+    current_user: User = Depends(get_current_user)
+):
+    """Debug endpoint to see available Gemini models"""
+    from app.core.config import settings
+    import google.generativeai as genai
+    
+    try:
+        if not settings.GEMINI_API_KEY:
+            return {"error": "No API Key configured"}
+            
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        
+        models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                models.append({
+                    "name": m.name,
+                    "display_name": m.display_name
+                })
+                
+        return {
+            "success": True, 
+            "count": len(models), 
+            "models": models,
+            "configured_model": settings.GEMINI_MODEL
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @router.post("/ai/certifications")
 async def ai_suggest_certifications(
     request: dict,
