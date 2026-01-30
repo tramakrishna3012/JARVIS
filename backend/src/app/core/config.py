@@ -36,9 +36,9 @@ class Settings(BaseSettings):
         "https://*.vercel.app",
     ]
     
-    # OpenAI
-    OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    # Google Gemini
+    GEMINI_API_KEY: str = "AIzaSyCg4V9EkZLFGavDHi3lCs7B_xwMNtX3ZcM"
+    GEMINI_MODEL: str = "gemini-1.5-flash"
     
     # Email (SMTP)
     SMTP_HOST: str = "smtp.gmail.com"

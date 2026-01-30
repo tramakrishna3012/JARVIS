@@ -1,10 +1,12 @@
 """
 AI Decision Engine - LLM Integration for Job Scoring & Content Generation
+Using Google Gemini API
 """
 
 import json
+import traceback
+import google.generativeai as genai
 from typing import Dict, List, Any, Optional
-from openai import AsyncOpenAI
 from app.core.config import settings
 
 
@@ -12,9 +14,42 @@ class AIEngine:
     """AI Decision Engine for intelligent job matching and content generation"""
     
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = settings.OPENAI_MODEL
+        # Configure Gemini
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
     
+    async def _generate_content(self, prompt: str) -> str:
+        """Helper to generate content asynchronously"""
+        try:
+            response = await self.model.generate_content_async(prompt)
+            return response.text
+        except Exception as e:
+            print(f"Gemini generation error: {e}")
+            traceback.print_exc()
+            raise e
+
+    async def _generate_json(self, prompt: str) -> Dict[str, Any]:
+        """Helper to generate and parse JSON content"""
+        try:
+            # Force JSON structure in prompt if not present
+            if "Return JSON" not in prompt:
+                prompt += "\n\nReturn user valid JSON."
+
+            content = await self._generate_content(prompt)
+            content = content.strip()
+            
+            # Clean up markdown code blocks
+            if content.startswith("```"):
+                lines = content.split('\n')
+                # Remove first line (```json or ```) and last line (```)
+                if len(lines) >= 2:
+                    content = '\n'.join(lines[1:-1])
+            
+            return json.loads(content)
+        except Exception as e:
+            print(f"Gemini JSON error: {e}")
+            return {}
+
     async def calculate_job_score(
         self, 
         job_data: Dict[str, Any], 
@@ -49,22 +84,14 @@ Return a JSON object with these scores (0.0 to 1.0):
 Return ONLY valid JSON, no markdown."""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=500
-            )
-            
-            result = json.loads(response.choices[0].message.content)
+            result = await self._generate_json(prompt)
             return {
                 "relevance_score": result.get("overall_score", 0.5),
                 "skill_match_score": result.get("skill_match", 0.5),
                 "experience_match_score": result.get("experience_match", 0.5),
                 "location_match_score": result.get("location_match", 0.5),
             }
-        except Exception as e:
-            print(f"AI scoring error: {e}")
+        except Exception:
             return {
                 "relevance_score": 0.5,
                 "skill_match_score": 0.5,
@@ -116,16 +143,8 @@ Return a JSON object with this structure:
 Return ONLY valid JSON."""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.4,
-                max_tokens=2000
-            )
-            
-            return json.loads(response.choices[0].message.content)
-        except Exception as e:
-            print(f"Resume generation error: {e}")
+            return await self._generate_json(prompt)
+        except Exception:
             return existing_resume or profile_data
     
     async def generate_cover_letter(
@@ -157,16 +176,8 @@ CANDIDATE:
 Write the cover letter:"""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.6,
-                max_tokens=800
-            )
-            
-            return response.choices[0].message.content
-        except Exception as e:
-            print(f"Cover letter generation error: {e}")
+            return await self._generate_content(prompt)
+        except Exception:
             return ""
     
     async def generate_referral_message(
@@ -194,16 +205,8 @@ RULES:
 Write the message:"""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=300
-            )
-            
-            return response.choices[0].message.content
-        except Exception as e:
-            print(f"Referral message generation error: {e}")
+            return await self._generate_content(prompt)
+        except Exception:
             return ""
     
     async def answer_screening_question(
@@ -234,16 +237,8 @@ RULES:
 Answer:"""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.4,
-                max_tokens=300
-            )
-            
-            return response.choices[0].message.content
-        except Exception as e:
-            print(f"Screening question error: {e}")
+            return await self._generate_content(prompt)
+        except Exception:
             return ""
     
     async def analyze_email(
@@ -270,16 +265,8 @@ Return JSON with:
 Return ONLY valid JSON."""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=300
-            )
-            
-            return json.loads(response.choices[0].message.content)
-        except Exception as e:
-            print(f"Email analysis error: {e}")
+            return await self._generate_json(prompt)
+        except Exception:
             return {
                 "sentiment": "neutral",
                 "intent": "other",
@@ -318,15 +305,8 @@ RULES:
 Write the professional summary:"""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.6,
-                max_tokens=200
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            print(f"Summary generation error: {e}")
+            return await self._generate_content(prompt)
+        except Exception:
             return ""
     
     async def enhance_experience_description(
@@ -369,15 +349,8 @@ RULES:
 Return ONLY valid JSON."""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.6,
-                max_tokens=400
-            )
-            return json.loads(response.choices[0].message.content)
-        except Exception as e:
-            print(f"Experience enhancement error: {e}")
+            return await self._generate_json(prompt)
+        except Exception:
             return {
                 "description": basic_description,
                 "highlights": []
@@ -415,15 +388,8 @@ RULES:
 Return ONLY valid JSON."""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,
-                max_tokens=300
-            )
-            return json.loads(response.choices[0].message.content)
-        except Exception as e:
-            print(f"Skills suggestion error: {e}")
+            return await self._generate_json(prompt)
+        except Exception:
             return {
                 "technical_skills": [],
                 "soft_skills": [],
@@ -493,25 +459,7 @@ RULES:
 Return ONLY valid JSON, no markdown code blocks."""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,
-                max_tokens=2500
-            )
-            
-            content = response.choices[0].message.content.strip()
-            
-            # Remove markdown code blocks if present
-            if content.startswith("```json"):
-                content = content[7:]
-            elif content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-            
-            result = json.loads(content)
+            result = await self._generate_json(prompt)
             
             # Ensure required structure
             if "personalInfo" not in result:
@@ -526,12 +474,7 @@ Return ONLY valid JSON, no markdown code blocks."""
                 result["certifications"] = []
             
             return result
-        except json.JSONDecodeError as je:
-            print(f"JSON parse error: {je}")
-            print(f"Raw content: {content[:500] if content else 'empty'}")
-            return {}
-        except Exception as e:
-            print(f"Resume build error: {e}")
+        except Exception:
             return {}
     
     async def resume_chat(
@@ -577,29 +520,13 @@ Return JSON format:
 }}"""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=500
-            )
-            
-            content = response.choices[0].message.content.strip()
-            if content.startswith("```"):
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                    content = content[4:]
-            content = content.strip()
-            
-            return json.loads(content)
+            return await self._generate_json(prompt)
         except Exception as e:
-            import traceback
-            error_trace = traceback.format_exc()
-            print(f"Chat error: {e}")
-            print(f"Traceback: {error_trace}")
+            error_msg = str(e)
+            traceback.print_exc()
             return {
-                "response": f"I encountered an error while processing your request: {str(e)}. Please check the server logs or API key configuration.",
-                "suggestions": ["Check API Key", "Retry later"],
+                "response": f"I I've encountered an issue with the Gemini AI service: {error_msg}. Please try again later.",
+                "suggestions": ["Retry"],
                 "action": "none"
             }
     
@@ -632,20 +559,7 @@ Analyze and return JSON:
 }}"""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.4,
-                max_tokens=800
-            )
-            
-            content = response.choices[0].message.content.strip()
-            if content.startswith("```"):
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                    content = content[4:]
-            
-            return json.loads(content.strip())
+            return await self._generate_json(prompt)
         except Exception as e:
             print(f"ATS optimize error: {e}")
             return {"ats_score": 0, "improvements": [], "error": str(e)}
@@ -676,22 +590,8 @@ Return JSON array with realistic project suggestions:
 ]"""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=600
-            )
-            
-            content = response.choices[0].message.content.strip()
-            if content.startswith("```"):
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                    content = content[4:]
-            
-            return json.loads(content.strip())
-        except Exception as e:
-            print(f"Projects generation error: {e}")
+            return await self._generate_json(prompt)
+        except Exception:
             return []
     
     async def suggest_certifications(
@@ -722,22 +622,8 @@ Return JSON array of certification suggestions:
 Suggest 4-5 real, recognized certifications."""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,
-                max_tokens=500
-            )
-            
-            content = response.choices[0].message.content.strip()
-            if content.startswith("```"):
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                    content = content[4:]
-            
-            return json.loads(content.strip())
-        except Exception as e:
-            print(f"Certification suggestion error: {e}")
+            return await self._generate_json(prompt)
+        except Exception:
             return []
     
     async def generate_achievements(
@@ -766,22 +652,8 @@ Return JSON array of achievement suggestions that can be customized:
 Make them specific, quantifiable, and impressive."""
 
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=500
-            )
-            
-            content = response.choices[0].message.content.strip()
-            if content.startswith("```"):
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                    content = content[4:]
-            
-            return json.loads(content.strip())
-        except Exception as e:
-            print(f"Achievement generation error: {e}")
+            return await self._generate_json(prompt)
+        except Exception:
             return []
 
 
