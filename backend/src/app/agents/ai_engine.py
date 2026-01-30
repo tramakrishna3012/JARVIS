@@ -44,9 +44,9 @@ class AIEngine:
             return response.text
         except Exception as e:
             error_str = str(e).lower()
-            # Handle 404/NotFound (Invalid model) by falling back to standard model
-            if "404" in error_str or "not found" in error_str:
-                print(f"Model error: {e}. Falling back to 'gemini-pro'...")
+            # Handle 404 (Invalid model) or 429 (Quota Exceeded) by falling back to standard model
+            if "404" in error_str or "not found" in error_str or "429" in error_str or "quota" in error_str:
+                print(f"Model error ({e}). Falling back to 'gemini-pro'...")
                 try:
                     # Initialize fallback model
                     start_fallback = genai.GenerativeModel("gemini-pro")
