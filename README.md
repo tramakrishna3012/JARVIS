@@ -71,6 +71,15 @@ SMTP_PASSWORD=your-password
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
+## 🚢 Deployment (GitHub Actions)
+
+The GitHub Actions workflow deploys both apps to Vercel on pushes to `main`. Configure these repository secrets before running:
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_FRONTEND_PROJECT_ID`
+- `VERCEL_BACKEND_PROJECT_ID`
+
 ## 📚 API Documentation
 
 Once running, visit:
