@@ -55,7 +55,6 @@ jobs:
     name: Deploy Backend
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: frontend-build
     steps:
       - uses: actions/checkout@v4
 
